@@ -1,147 +1,187 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MAUP - Monitoreo de Aves Urbanas del Perú</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root {
-    --primary: #1a6b3c;
-    --primary-light: #e8f5ee;
-    --primary-mid: #2d9e5f;
-    --accent: #d4a017;
-    --danger: #c0392b;
-    --border: #ddd;
-    --bg: #f9f9f6;
-    --card: #ffffff;
-    --text: #222;
-    --muted: #666;
-    --radius: 8px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+:root {
+  --primary: #1a6b3c;
+  --primary-light: #e8f5ee;
+  --primary-mid: #2d9e5f;
+  --accent: #d4a017;
+  --danger: #c0392b;
+  --radius: 8px;
+  --bg: #f5f5f2;
+  --card: #ffffff;
+  --border: #ddd;
+  --text: #1a1a1a;
+  --muted: #666;
+  --input-bg: #ffffff;
+  --input-readonly: #f4f4f4;
+  --steps-bg: #ffffff;
+  --footer-bg: #ffffff;
+  --stat-card-bg: #e8f5ee;
+  --alert-info-bg: #e8f4fd;
+  --alert-info-border: #2980b9;
+  --alert-info-text: #1a5276;
+  --alert-warn-bg: #fef9e7;
+  --alert-warn-border: #d4a017;
+  --alert-warn-text: #7d6608;
+  --th-shaded: #0f5230;
+  --td-shaded: #d4edda;
+}
+[data-theme="dark"] {
+  --bg: #111815;
+  --card: #1c2620;
+  --border: #2e4038;
+  --text: #e8ede9;
+  --muted: #8aab96;
+  --input-bg: #1a2e22;
+  --input-readonly: #151e19;
+  --steps-bg: #161f1a;
+  --footer-bg: #161f1a;
+  --primary-light: #1a3028;
+  --stat-card-bg: #1a3028;
+  --alert-info-bg: #102030;
+  --alert-info-border: #2471a3;
+  --alert-info-text: #85c1e9;
+  --alert-warn-bg: #1e1a0a;
+  --alert-warn-border: #b7950b;
+  --alert-warn-text: #f9e79f;
+  --th-shaded: #0b3d22;
+  --td-shaded: #1a3a25;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; transition: background 0.2s, color 0.2s; }
 
-  /* HEADER */
-  .header { background: var(--primary); color: white; padding: 14px 20px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-  .header-logo { font-size: 22px; font-weight: 700; letter-spacing: 1px; background: white; color: var(--primary); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-  .header-title { flex: 1; }
-  .header-title h1 { font-size: 16px; font-weight: 700; }
-  .header-title p { font-size: 11px; opacity: 0.85; }
+.header { background: var(--primary); color: white; padding: 10px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+.header-logo { height: 38px; width: auto; display: block; object-fit: contain; }
+.logo-fallback { display: none; background: white; border-radius: 50%; width: 38px; height: 38px; align-items: center; justify-content: center; font-weight: 900; color: var(--primary); font-size: 11px; flex-shrink: 0; }
+.header-title { flex: 1; min-width: 0; }
+.header-title h1 { font-size: 15px; font-weight: 700; }
+.header-title p { font-size: 11px; opacity: 0.85; }
+.header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
-  /* NAV STEPS */
-  .steps { display: flex; background: white; border-bottom: 1px solid var(--border); overflow-x: auto; }
-  .step-btn { flex: 1; min-width: 80px; padding: 10px 6px; border: none; background: none; cursor: pointer; font-size: 11px; color: var(--muted); border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
-  .step-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; background: var(--primary-light); }
-  .step-btn:hover { background: var(--primary-light); }
+.save-dot   { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; display: inline-block; }
+.save-label { font-size: 11px; color: rgba(255,255,255,0.8); white-space: nowrap; }
 
-  /* SECTIONS */
-  .section { display: none; padding: 16px; max-width: 900px; margin: 0 auto; }
-  .section.active { display: block; }
+.theme-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.theme-icon   { font-size: 15px; }
+.toggle-track { width: 36px; height: 20px; background: rgba(255,255,255,0.25); border-radius: 10px; position: relative; border: 1px solid rgba(255,255,255,0.3); }
+.toggle-thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: left 0.2s; }
+[data-theme="dark"] .toggle-track { background: rgba(255,255,255,0.4); }
+[data-theme="dark"] .toggle-thumb { left: 18px; }
 
-  /* CARD */
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
-  .card-title { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--primary-light); display: flex; align-items: center; gap: 6px; }
+.steps { display: flex; background: var(--steps-bg); border-bottom: 1px solid var(--border); overflow-x: auto; }
+.step-btn { flex: 1; min-width: 72px; padding: 10px 4px; border: none; background: none; cursor: pointer; font-size: 11px; color: var(--muted); border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+.step-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; background: var(--primary-light); }
+.step-btn:hover { background: var(--primary-light); }
 
-  /* FORM GRID */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  .form-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .full { grid-column: 1 / -1; }
-  label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-  input, select, textarea { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 7px 9px; font-size: 13px; font-family: Arial, sans-serif; background: white; color: var(--text); }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-mid); box-shadow: 0 0 0 2px rgba(45,158,95,0.15); }
-  input[readonly] { background: #f4f4f4; color: var(--muted); }
+.section { display: none; padding: 16px; max-width: 920px; margin: 0 auto; }
+.section.active { display: block; }
 
-  /* BUTTONS */
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-primary:hover { background: #155e34; }
-  .btn-success { background: #27ae60; color: white; }
-  .btn-success:hover { background: #1e8449; }
-  .btn-danger { background: var(--danger); color: white; }
-  .btn-danger:hover { background: #a93226; }
-  .btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
-  .btn-outline:hover { background: var(--primary-light); }
-  .btn-sm { padding: 5px 10px; font-size: 12px; }
-  .btn-accent { background: var(--accent); color: white; }
-  .btn-accent:hover { background: #b8890e; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.card-title { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
 
-  /* TABLE */
-  .obs-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .obs-table th { background: var(--primary); color: white; padding: 7px 6px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
-  .obs-table td { border-bottom: 1px solid var(--border); padding: 5px 4px; vertical-align: middle; }
-  .obs-table tr:hover td { background: var(--primary-light); }
-  .obs-table input, .obs-table select { padding: 4px 5px; font-size: 12px; }
-  .table-wrap { overflow-x: auto; }
+.form-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.form-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.full { grid-column: 1 / -1; }
+label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+input, select, textarea { width: 100%; border: 1px solid var(--border); border-radius: 5px; padding: 7px 9px; font-size: 13px; font-family: Arial, sans-serif; background: var(--input-bg); color: var(--text); }
+input:focus, select:focus { outline: none; border-color: var(--primary-mid); box-shadow: 0 0 0 2px rgba(45,158,95,0.18); }
+input[readonly] { background: var(--input-readonly); color: var(--muted); }
 
-  /* BADGES */
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-  .badge-pc { background: #e8f4fd; color: #1a5276; }
-  .badge-tr { background: #fef9e7; color: #7d6608; }
-  .badge-nido { background: #fdebd0; color: #784212; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: #155e34; }
+.btn-success { background: #27ae60; color: white; }
+.btn-success:hover { background: #1e8449; }
+.btn-danger  { background: var(--danger); color: white; }
+.btn-danger:hover { background: #a93226; }
+.btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+.btn-outline:hover { background: var(--primary-light); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
 
-  /* ROUTE SELECTOR */
-  .route-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-  .route-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; transition: all 0.2s; }
-  .route-card:hover { border-color: var(--primary-mid); background: var(--primary-light); }
-  .route-card.selected { border-color: var(--primary); background: var(--primary-light); }
-  .route-card h3 { font-size: 13px; color: var(--primary); margin-bottom: 4px; }
-  .route-card p { font-size: 11px; color: var(--muted); }
+.obs-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.obs-table th { background: var(--primary); color: white; padding: 7px 6px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.obs-table th.col-shaded { background: var(--th-shaded); }
+.obs-table td { border-bottom: 1px solid var(--border); padding: 5px 4px; vertical-align: middle; background: var(--card); }
+.obs-table td.col-shaded { background: var(--td-shaded); }
+.obs-table tr:hover td:not(.col-shaded) { filter: brightness(0.96); }
+[data-theme="dark"] .obs-table tr:hover td:not(.col-shaded) { filter: brightness(1.1); }
+[data-theme="dark"] .obs-table tr:hover td.col-shaded { filter: brightness(1.15); }
+.obs-table input, .obs-table select { padding: 4px 5px; font-size: 12px; }
+.table-wrap { overflow-x: auto; }
 
-  /* PROGRESS */
-  .progress-bar { background: #e0e0e0; border-radius: 10px; height: 6px; margin: 6px 0; }
-  .progress-fill { height: 100%; border-radius: 10px; background: var(--primary); transition: width 0.3s; }
+.badge       { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-pc    { background: #d6eaf8; color: #1a5276; }
+.badge-tr    { background: #fef9e7; color: #7d6608; }
+.badge-nido  { background: #fdebd0; color: #784212; }
+[data-theme="dark"] .badge-pc   { background: #1a3050; color: #85c1e9; }
+[data-theme="dark"] .badge-tr   { background: #2a2010; color: #f9e79f; }
+[data-theme="dark"] .badge-nido { background: #2a1a08; color: #f0a860; }
 
-  /* ALERT */
-  .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
-  .alert-info { background: #e8f4fd; border-left: 4px solid #2980b9; color: #1a5276; }
-  .alert-success { background: #e9f7ef; border-left: 4px solid #27ae60; color: #1e8449; }
-  .alert-warning { background: #fef9e7; border-left: 4px solid var(--accent); color: #7d6608; }
+.route-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.route-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; transition: all 0.2s; background: var(--card); }
+.route-card:hover    { border-color: var(--primary-mid); background: var(--primary-light); }
+.route-card.selected { border-color: var(--primary); background: var(--primary-light); }
+.route-card h3 { font-size: 13px; color: var(--primary); margin-bottom: 4px; }
+.route-card p  { font-size: 11px; color: var(--muted); }
 
-  /* PC POINT ITEM */
-  .pc-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
-  .pc-item-header { background: var(--primary-light); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-  .pc-item-header h4 { font-size: 13px; color: var(--primary); font-weight: 700; }
-  .pc-item-body { padding: 12px; display: none; }
-  .pc-item-body.open { display: block; }
+.alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 12px; font-size: 13px; }
+.alert-info    { background: var(--alert-info-bg); border-left: 4px solid var(--alert-info-border); color: var(--alert-info-text); }
+.alert-warning { background: var(--alert-warn-bg); border-left: 4px solid var(--alert-warn-border); color: var(--alert-warn-text); }
+.alert-success { background: #e9f7ef; border-left: 4px solid #27ae60; color: #1e8449; }
+[data-theme="dark"] .alert-success { background: #0f2a1a; border-left-color: #1e8449; color: #58d68d; }
 
-  /* TABS inside section */
-  .sub-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
-  .sub-tab { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 12px; color: var(--muted); font-weight: 600; }
-  .sub-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+.sub-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+.sub-tab  { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 12px; color: var(--muted); font-weight: 600; }
+.sub-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-  /* FOOTER NAV */
-  .footer-nav { position: sticky; bottom: 0; background: white; border-top: 1px solid var(--border); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 50; }
+.footer-nav { position: sticky; bottom: 0; background: var(--footer-bg); border-top: 1px solid var(--border); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 50; }
 
-  /* COUNTER BADGE */
-  .count-badge { background: var(--primary); color: white; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.export-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat-card  { background: var(--stat-card-bg); border-radius: var(--radius); padding: 12px; text-align: center; }
+.stat-num   { font-size: 26px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-  .separator { height: 1px; background: var(--border); margin: 12px 0; }
-  .flex { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .flex-between { display: flex; justify-content: space-between; align-items: center; }
-  .mt { margin-top: 12px; }
-  .text-muted { color: var(--muted); font-size: 12px; }
+.flex         { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.mt           { margin-top: 12px; }
+.text-muted   { color: var(--muted); font-size: 12px; }
 
-  /* EXPORT SECTION */
-  .export-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
-  .stat-card { background: var(--primary-light); border-radius: var(--radius); padding: 12px; text-align: center; }
-  .stat-num { font-size: 28px; font-weight: 700; color: var(--primary); }
-  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  @media (max-width: 600px) {
-    .form-grid, .form-grid-3, .form-grid-4 { grid-template-columns: 1fr; }
-    .full { grid-column: 1; }
-  }
+@media (max-width: 600px) {
+  .form-grid, .form-grid-3, .form-grid-4 { grid-template-columns: 1fr; }
+  .full { grid-column: 1; }
+  .header-title p { display: none; }
+  .save-label { display: none; }
+}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-logo">🐦</div>
+  <img src="logo.webp" alt="PAU" class="header-logo"
+       onerror="this.style.display='none'; document.getElementById('logo-fb').style.display='flex'">
+  <div class="logo-fallback" id="logo-fb">PAU</div>
+
   <div class="header-title">
     <h1>Monitoreo de Aves Urbanas del Perú</h1>
     <p>MAUP — Arequipa · Formulario de campo digital</p>
+  </div>
+
+  <div class="header-actions">
+    <div style="display:flex;align-items:center;gap:5px">
+      <span class="save-dot" id="save-dot"></span>
+      <span class="save-label" id="save-label">Guardado</span>
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Modo oscuro / claro">
+      <span class="theme-icon" id="theme-icon">☀️</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </div>
   </div>
 </div>
 
@@ -155,845 +195,615 @@
   <button class="step-btn" onclick="goStep(6)">⑦ Exportar</button>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 0: DATOS DE SESIÓN
-═══════════════════════════════════════════════════════ -->
+<!-- ① SESIÓN -->
 <div class="section active" id="step-0">
   <div class="card">
-    <div class="card-title">📋 Datos generales del monitoreo</div>
+    <div class="card-title">📋 Datos generales</div>
     <div class="form-grid">
-      <div>
-        <label>Ciudad</label>
-        <input type="text" id="ciudad" value="Arequipa" readonly>
-      </div>
-      <div>
-        <label>Fecha</label>
-        <input type="date" id="fecha" onchange="updateSesion()">
-      </div>
+      <div><label>Ciudad</label><input type="text" id="ciudad" value="Arequipa" readonly></div>
+      <div><label>Fecha</label><input type="date" id="fecha" onchange="autosave()"></div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-title">🌤 Datos meteorológicos</div>
     <div class="form-grid-3">
-      <div>
-        <label>Precipitación (%)</label>
-        <input type="number" id="precipitacion" min="0" max="100" placeholder="0">
-      </div>
-      <div>
-        <label>Nubosidad (%)</label>
-        <input type="number" id="nubosidad" min="0" max="100" placeholder="0">
-      </div>
-      <div>
-        <label>Temperatura (°C)</label>
-        <input type="number" id="temperatura" placeholder="18">
-      </div>
-      <div>
-        <label>Vel. Viento (km/h)</label>
-        <input type="number" id="velviento" min="0" placeholder="0">
-      </div>
-      <div>
-        <label>Humedad (%)</label>
-        <input type="number" id="humedad" min="0" max="100" placeholder="60">
-      </div>
-      <div>
-        <label>Viento (descripción)</label>
-        <select id="viento">
+      <div><label>Precipitación (%)</label><input type="number" id="precipitacion" min="0" max="100" placeholder="0" oninput="autosave()"></div>
+      <div><label>Nubosidad (%)</label><input type="number" id="nubosidad" min="0" max="100" placeholder="0" oninput="autosave()"></div>
+      <div><label>Temperatura (°C)</label><input type="number" id="temperatura" placeholder="18" oninput="autosave()"></div>
+      <div><label>Vel. Viento (km/h)</label><input type="number" id="velviento" min="0" placeholder="0" oninput="autosave()"></div>
+      <div><label>Humedad (%)</label><input type="number" id="humedad" min="0" max="100" placeholder="60" oninput="autosave()"></div>
+      <div><label>Viento</label>
+        <select id="viento" onchange="autosave()">
           <option value="">— Seleccionar —</option>
-          <option>Calmo</option>
-          <option>Brisa suave</option>
-          <option>Brisa moderada</option>
-          <option>Viento fuerte</option>
+          <option>Calmo</option><option>Brisa suave</option>
+          <option>Brisa moderada</option><option>Viento fuerte</option>
         </select>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 1: MONITORES Y EQUIPO
-═══════════════════════════════════════════════════════ -->
+<!-- ② MONITOR -->
 <div class="section" id="step-1">
   <div class="card">
     <div class="card-title">👤 Monitores (máx. 2)</div>
     <div class="form-grid">
-      <div>
-        <label>Monitor 1</label>
-        <input type="text" id="monitor1" placeholder="Nombre completo">
-      </div>
-      <div>
-        <label>Monitor 2 (opcional)</label>
-        <input type="text" id="monitor2" placeholder="Nombre completo">
-      </div>
+      <div><label>Monitor 1</label><input type="text" id="monitor1" placeholder="Nombre completo" oninput="autosave()"></div>
+      <div><label>Monitor 2 (opcional)</label><input type="text" id="monitor2" placeholder="Nombre completo" oninput="autosave()"></div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-title">👥 Equipo de campo (máx. 7)</div>
     <div id="equipo-list"></div>
-    <div class="mt">
-      <button class="btn btn-outline btn-sm" onclick="addEquipo()">+ Agregar integrante</button>
-    </div>
+    <div class="mt"><button class="btn btn-outline btn-sm" onclick="addEquipo()">+ Agregar integrante</button></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 2: SELECCIÓN DE RUTA
-═══════════════════════════════════════════════════════ -->
+<!-- ③ RUTA -->
 <div class="section" id="step-2">
-  <div class="alert alert-info">Selecciona la ruta a monitorear. Si la ruta tiene transecto Y puntos de conteo, ambos se cargarán.</div>
-
+  <div class="alert alert-info">Selecciona la ruta a monitorear. Si tiene transecto y puntos de conteo, ambos se cargarán.</div>
   <div class="route-grid" id="route-grid"></div>
-
-  <div id="route-info" style="display:none;" class="card mt">
+  <div id="route-info" style="display:none" class="card mt">
     <div class="card-title">📍 Ruta seleccionada</div>
     <div id="route-detail"></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 3: CONTEO DE AVES
-═══════════════════════════════════════════════════════ -->
+<!-- ④ CONTEO -->
 <div class="section" id="step-3">
   <div id="conteo-tabs" class="sub-tabs"></div>
   <div id="conteo-content"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 4: PRESIÓN ANTRÓPICA
-═══════════════════════════════════════════════════════ -->
+<!-- ⑤ PRESIÓN -->
 <div class="section" id="step-4">
-  <div class="alert alert-info">Registra personas, vehículos, gatos, perros, nidos y fenología por cada punto/transecto.</div>
+  <div class="alert alert-info">Registra la presión antrópica por cada punto/transecto.</div>
   <div id="presion-content"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 5: NIDOS
-═══════════════════════════════════════════════════════ -->
+<!-- ⑥ NIDOS -->
 <div class="section" id="step-5">
   <div class="card">
     <div class="flex-between">
-      <div class="card-title">🪺 Registro de nidos (opcional)</div>
+      <div class="card-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0">🪺 Registro de nidos (opcional)</div>
       <button class="btn btn-outline btn-sm" onclick="addNido()">+ Agregar nido</button>
     </div>
-    <div id="nidos-list">
-      <p class="text-muted">No hay nidos registrados.</p>
-    </div>
+    <div id="nidos-list" style="margin-top:12px"><p class="text-muted">No hay nidos registrados.</p></div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     STEP 6: EXPORTAR
-═══════════════════════════════════════════════════════ -->
+<!-- ⑦ EXPORTAR -->
 <div class="section" id="step-6">
   <div class="card">
     <div class="card-title">📊 Resumen de la sesión</div>
     <div class="export-summary" id="export-summary"></div>
   </div>
-
   <div class="card">
     <div class="card-title">📥 Exportar a Excel</div>
-    <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">Se generará un archivo .xlsx con todas las hojas del monitoreo según el formato MAUP.</p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Se generará un archivo .xlsx con todas las hojas según el formato MAUP.</p>
     <div class="flex">
       <button class="btn btn-success" onclick="exportExcel()">⬇ Descargar Excel (.xlsx)</button>
       <button class="btn btn-outline" onclick="showPreview()">👁 Vista previa</button>
+      <button class="btn btn-danger btn-sm" onclick="clearSave()" style="margin-left:auto">🗑 Borrar sesión</button>
     </div>
-    <div id="preview-area" style="margin-top:16px;"></div>
+    <div id="preview-area" style="margin-top:16px"></div>
   </div>
 </div>
 
 <div class="footer-nav">
   <button class="btn btn-outline" id="btn-prev" onclick="prevStep()" style="display:none">← Anterior</button>
-  <div style="font-size:12px; color:var(--muted);" id="step-label">Paso 1 de 7</div>
+  <div style="font-size:12px;color:var(--muted)" id="step-label">Paso 1 de 7</div>
   <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Siguiente →</button>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-// DATA CONSTANTS
-// ═══════════════════════════════════════════════
+// ══════════ CONSTANTS ══════════
 const RUTAS = [
-  { id:'r1', label:'Ruta 1', zona:'Campus Ingenierías y Biomédicas de la UNSA', tipo:'PC', codLocalidad:'ARE-CAMP-UNSA',
-    pc: { desde:1, hasta:11, prefijo:'ARE-CAM-UNSA-PC-' } },
-  { id:'r2', label:'Ruta 2', zona:'Monte Ribereño y Avenida', tipo:'PC', codLocalidad:'ARE-VALL',
-    pc: { desde:10, hasta:1, prefijo:'ARE-VAL-PC-', descendente:true } },
+  { id:'r1',  label:'Ruta 1', zona:'Campus Ingenierías y Biomédicas de la UNSA', tipo:'PC', codLocalidad:'ARE-CAMP-UNSA',
+    pc:{ desde:1, hasta:11, prefijo:'ARE-CAM-UNSA-PC-' } },
+  { id:'r2',  label:'Ruta 2', zona:'Monte Ribereño y Avenida', tipo:'PC', codLocalidad:'ARE-VALL',
+    pc:{ desde:10, hasta:1, prefijo:'ARE-VAL-PC-' } },
   { id:'r3a', label:'Ruta 3 — Av. Ejército', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVE',
-    transecto: { codigo:'ARE-AVE-T1' } },
+    transecto:{ codigo:'ARE-AVE-T1' } },
   { id:'r3b', label:'Ruta 3 — P. Selva Alegre', zona:'Parque', tipo:'PC', codLocalidad:'ARE-SEL',
-    pc: { desde:1, hasta:8, prefijo:'ARE-SEL-PC-' } },
+    pc:{ desde:1, hasta:8, prefijo:'ARE-SEL-PC-' } },
   { id:'r4a', label:'Ruta 4 — Av. Independencia', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVI',
-    transecto: { codigo:'ARE-AVI-T1' } },
+    transecto:{ codigo:'ARE-AVI-T1' } },
   { id:'r4b', label:'Ruta 4 — Plaza de Armas', zona:'Plaza', tipo:'PC', codLocalidad:'ARE-PLA',
-    pc: { desde:1, hasta:1, prefijo:'ARE-PLA-PC-' } },
+    pc:{ desde:1, hasta:1, prefijo:'ARE-PLA-PC-' } },
 ];
-
 const ESPECIES = [
-  ['ACT MAC','Actitis macularius','Playero Coleador'],
-  ['AER AND','Aeronautes andecolus','Vencejo Andino'],
-  ['ANA FLA','Anas flavirostris','Pato Barcino'],
-  ['ARD ALB','Ardea alba','Garza Grande'],
-  ['ATH CUN','Athene cunicularia','Lechuza Terrestre'],
-  ['BUB IBI','Bubulcus ibis','Garcita Bueyera'],
-  ['CAT AUR','Cathartes aura','Gallinazo de Cabeza Roja'],
-  ['CHR SER','Chroicocephalus serranus','Gaviota Andina'],
-  ['COL LIV','Columba livia','Paloma Doméstica'],
-  ['COL CRU','Columbina cruziana','Tortolita Peruana'],
-  ['CON CIN','Conirostrum cinereum','Pico-de-Cono Cinéreo'],
-  ['CRO SUL','Crotophaga sulcirostris','Garrapatero de Pico Estriado'],
-  ['DIV WAR','Dives warczewiczi','Tordo de Matorral'],
-  ['EGR THU','Egretta thula','Garcita Blanca'],
-  ['FAL FEM','Falco femoralis','Halcón Aplomado'],
-  ['FAL PER','Falco peregrinus','Halcón Peregrino'],
-  ['FAL SPA','Falco sparverius','Cernícalo Americano'],
-  ['GEO PLE','Geospizopsis plebejus','Fringilo de Pecho Cenizo'],
-  ['GER MEL','Geranoaetus melanoleucus','Aguilucho de Pecho Negro'],
-  ['GER POL','Geranoaetus polyosoma','Aguilucho Variable'],
-  ['GLA PER','Glaucidium peruanum','Lechucita Peruana'],
-  ['HIR RUS','Hirundo rustica','Golondrina Tijereta'],
-  ['MER ARM','Merganetta armata','Pato de los Torrentes'],
-  ['MET PHO','Metallura phoebe','Colibrí Negro'],
-  ['MET CEC','Metriopelia ceciliae','Tortolita Moteada'],
-  ['MOL BON','Molothrus bonariensis','Tordo Brilloso'],
-  ['MUS MAC','Muscisaxicola maclovianus','Dormilona de Cara Oscura'],
-  ['MYR FAN','Myrtis fanny','Estrellita de Collar Púrpura'],
-  ['NYC NYC','Nycticorax nycticorax','Huaco Común'],
-  ['PAR UNI','Parabuteo unicinctus','Gavilán Mixto'],
-  ['PAR SAN','Pardirallus sanguinolentus','Rascón Plomizo'],
-  ['PAS DOM','Passer domesticus','Gorrión Casero'],
-  ['PAT MAC','Patagioenas maculoso','Paloma de Ala Moteada'],
-  ['PAT GIG','Patagona gigas','Colibrí Gigante'],
-  ['PLE RID','Plegadis ridgwayi','Ibis de la Puna'],
-  ['PSI ERY','Psittacara erythrogenys','Cotorra de Cabeza Roja'],
-  ['PSI MIT','Psittacara mitratus','Cotorra Mitrada'],
-  ['PSI WAG','Psittacara wagleri','Cotorra de Frente Escarlata'],
-  ['PYG CYA','Pygochelidon cyanoleuca','Golondrina Azul y Blanca'],
-  ['PYR RUB','Pyrocephalus rubinus','Mosquero Bermellón'],
-  ['RHO VES','Rhodopis vesper','Colibrí de Oasis'],
-  ['RHO ALA','Rhodopis alaudina','Fringilo de Cola Bandeada'],
-  ['RHO FRU','Rhopospina fruticeti','Fringilo de Pecho Negro'],
-  ['SIC OLI','Sicalis olivascens','Chirigüe Verdoso'],
-  ['SPI MAG','Spinus magellanicus','Jilguero Encapuchado'],
-  ['SYS LON','Systellura longirostris','Chotacabras de Ala Bandeada'],
-  ['THA COR','Thaumastura cora','Colibrí de Cora'],
-  ['TRO AED','Troglodytes aedon','Cucarachero Común'],
-  ['TUR CHI','Turdus chiguanco','Zorzal Chiguanco'],
-  ['VAN RES','Vanellus resplendens','Avefría Andina'],
-  ['ZEN AUR','Zenaida auriculata','Tórtola Orejuda'],
-  ['ZEN MEL','Zenaida meloda','Tórtola Melódica'],
+  ['ACT MAC','Actitis macularius','Playero Coleador'],['AER AND','Aeronautes andecolus','Vencejo Andino'],
+  ['ANA FLA','Anas flavirostris','Pato Barcino'],['ARD ALB','Ardea alba','Garza Grande'],
+  ['ATH CUN','Athene cunicularia','Lechuza Terrestre'],['BUB IBI','Bubulcus ibis','Garcita Bueyera'],
+  ['CAT AUR','Cathartes aura','Gallinazo de Cabeza Roja'],['CHR SER','Chroicocephalus serranus','Gaviota Andina'],
+  ['COL LIV','Columba livia','Paloma Doméstica'],['COL CRU','Columbina cruziana','Tortolita Peruana'],
+  ['CON CIN','Conirostrum cinereum','Pico-de-Cono Cinéreo'],['CRO SUL','Crotophaga sulcirostris','Garrapatero de Pico Estriado'],
+  ['DIV WAR','Dives warczewiczi','Tordo de Matorral'],['EGR THU','Egretta thula','Garcita Blanca'],
+  ['FAL FEM','Falco femoralis','Halcón Aplomado'],['FAL PER','Falco peregrinus','Halcón Peregrino'],
+  ['FAL SPA','Falco sparverius','Cernícalo Americano'],['GEO PLE','Geospizopsis plebejus','Fringilo de Pecho Cenizo'],
+  ['GER MEL','Geranoaetus melanoleucus','Aguilucho de Pecho Negro'],['GER POL','Geranoaetus polyosoma','Aguilucho Variable'],
+  ['GLA PER','Glaucidium peruanum','Lechucita Peruana'],['HIR RUS','Hirundo rustica','Golondrina Tijereta'],
+  ['MER ARM','Merganetta armata','Pato de los Torrentes'],['MET PHO','Metallura phoebe','Colibrí Negro'],
+  ['MET CEC','Metriopelia ceciliae','Tortolita Moteada'],['MOL BON','Molothrus bonariensis','Tordo Brilloso'],
+  ['MUS MAC','Muscisaxicola maclovianus','Dormilona de Cara Oscura'],['MYR FAN','Myrtis fanny','Estrellita de Collar Púrpura'],
+  ['NYC NYC','Nycticorax nycticorax','Huaco Común'],['PAR UNI','Parabuteo unicinctus','Gavilán Mixto'],
+  ['PAR SAN','Pardirallus sanguinolentus','Rascón Plomizo'],['PAS DOM','Passer domesticus','Gorrión Casero'],
+  ['PAT MAC','Patagioenas maculoso','Paloma de Ala Moteada'],['PAT GIG','Patagona gigas','Colibrí Gigante'],
+  ['PLE RID','Plegadis ridgwayi','Ibis de la Puna'],['PSI ERY','Psittacara erythrogenys','Cotorra de Cabeza Roja'],
+  ['PSI MIT','Psittacara mitratus','Cotorra Mitrada'],['PSI WAG','Psittacara wagleri','Cotorra de Frente Escarlata'],
+  ['PYG CYA','Pygochelidon cyanoleuca','Golondrina Azul y Blanca'],['PYR RUB','Pyrocephalus rubinus','Mosquero Bermellón'],
+  ['RHO VES','Rhodopis vesper','Colibrí de Oasis'],['RHO ALA','Rhodopis alaudina','Fringilo de Cola Bandeada'],
+  ['RHO FRU','Rhopospina fruticeti','Fringilo de Pecho Negro'],['SIC OLI','Sicalis olivascens','Chirigüe Verdoso'],
+  ['SPI MAG','Spinus magellanicus','Jilguero Encapuchado'],['SYS LON','Systellura longirostris','Chotacabras de Ala Bandeada'],
+  ['THA COR','Thaumastura cora','Colibrí de Cora'],['TRO AED','Troglodytes aedon','Cucarachero Común'],
+  ['TUR CHI','Turdus chiguanco','Zorzal Chiguanco'],['VAN RES','Vanellus resplendens','Avefría Andina'],
+  ['ZEN AUR','Zenaida auriculata','Tórtola Orejuda'],['ZEN MEL','Zenaida meloda','Tórtola Melódica'],
   ['ZON CAP','Zonotrichia capensis','Gorrión de Collar Rufo'],
 ];
-
-const IDENTIFICACION = ['VISUAL','AUDITIVO'];
-const COMPORTAMIENTO = ['Volando','Forrajeando','Interactuando','Perchado','Reposo (estructura humana)','Vocalizando','Caminando'];
+const IDENTIFICACION  = ['VISUAL','AUDITIVO'];
+const COMPORTAMIENTO  = ['Volando','Forrajeando','Interactuando','Perchado','Reposo (estructura humana)','Vocalizando','Caminando'];
 const ALTURA_FORRAJEO = ['SUELO','ESTRUCTURA HUMANA','DESCONOCIDO','DOSEL','SUBDOSEL','ESTRATO MEDIO','SOTOBOSQUE'];
+const STORAGE_KEY     = 'maup_v3';
 
-// ═══════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════
-let state = {
-  currentStep: 0,
-  equipoCount: 0,
-  selectedRuta: null,
-  puntos: [],      // {id, codigo, tipo:'PC'|'TR', obs:[], presion:{}}
-  nidos: [],
-};
+// ══════════ STATE ══════════
+let state = { currentStep:0, selectedRutaId:null, selectedRuta:null, puntos:[], nidos:[], darkMode:false };
+let _eqCounter = 0;
 
-// ═══════════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════════
+// ══════════ THEME ══════════
+function toggleTheme() { state.darkMode = !state.darkMode; applyTheme(); autosave(); }
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.darkMode?'dark':'light');
+  document.getElementById('theme-icon').textContent = state.darkMode ? '🌙' : '☀️';
+}
+
+// ══════════ AUTOSAVE ══════════
+let _saveTimer = null;
+function autosave() {
+  clearTimeout(_saveTimer);
+  _setSaveUI('saving');
+  _saveTimer = setTimeout(_doSave, 700);
+}
+function _setSaveUI(s) {
+  const dot = document.getElementById('save-dot');
+  const lbl = document.getElementById('save-label');
+  if (s==='saving') { dot.style.background='#e6ac00'; lbl.textContent='Guardando...'; }
+  else if (s==='ok') { dot.style.background='#27ae60'; lbl.textContent='Guardado ✓'; }
+  else { dot.style.background='#e74c3c'; lbl.textContent='Error'; }
+}
+function _doSave() {
+  try {
+    const equipo = [];
+    document.querySelectorAll('[data-eqid]').forEach(inp => equipo.push({ id:inp.dataset.eqid, val:inp.value }));
+    const snap = {
+      darkMode: state.darkMode,
+      currentStep: state.currentStep,
+      selectedRutaId: state.selectedRutaId,
+      puntos: state.puntos,
+      nidos: state.nidos,
+      equipo,
+      form: {
+        fecha:         gv('fecha'),
+        precipitacion: gv('precipitacion'),
+        nubosidad:     gv('nubosidad'),
+        temperatura:   gv('temperatura'),
+        velviento:     gv('velviento'),
+        humedad:       gv('humedad'),
+        viento:        gv('viento'),
+        monitor1:      gv('monitor1'),
+        monitor2:      gv('monitor2'),
+      }
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
+    _setSaveUI('ok');
+  } catch(e) { _setSaveUI('err'); }
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    state.darkMode = !!s.darkMode;
+    applyTheme();
+    if (s.form) Object.entries(s.form).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value=v; });
+    if (s.equipo && s.equipo.length) s.equipo.forEach(e => _addEquipoRow(e.id, e.val));
+    if (s.selectedRutaId) {
+      const r = RUTAS.find(r=>r.id===s.selectedRutaId);
+      if (r) {
+        state.selectedRutaId = r.id;
+        state.selectedRuta   = r;
+        state.puntos         = s.puntos || [];
+        const rc = document.getElementById('rc-'+r.id);
+        if (rc) rc.classList.add('selected');
+        renderRouteInfo(r);
+      }
+    }
+    state.nidos = s.nidos || [];
+    goStep(s.currentStep||0);
+    return true;
+  } catch(e) { return false; }
+}
+
+function clearSave() {
+  if (!confirm('¿Borrar toda la sesión guardada y empezar de nuevo?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ══════════ NAVIGATION ══════════
 function goStep(n) {
-  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('active', i===n));
-  document.querySelectorAll('.step-btn').forEach((b,i) => b.classList.toggle('active', i===n));
+  document.querySelectorAll('.section').forEach((s,i)=>s.classList.toggle('active',i===n));
+  document.querySelectorAll('.step-btn').forEach((b,i)=>b.classList.toggle('active',i===n));
   state.currentStep = n;
-  document.getElementById('step-label').textContent = `Paso ${n+1} de 7`;
-  document.getElementById('btn-prev').style.display = n===0 ? 'none' : '';
-  document.getElementById('btn-next').style.display = n===6 ? 'none' : '';
+  document.getElementById('step-label').textContent = 'Paso '+(n+1)+' de 7';
+  document.getElementById('btn-prev').style.display = n===0?'none':'';
+  document.getElementById('btn-next').style.display = n===6?'none':'';
   if (n===3) renderConteo();
   if (n===4) renderPresion();
   if (n===5) renderNidos();
   if (n===6) renderExportSummary();
+  autosave();
 }
-function nextStep() { if(state.currentStep < 6) goStep(state.currentStep+1); }
-function prevStep() { if(state.currentStep > 0) goStep(state.currentStep-1); }
+function nextStep() { if(state.currentStep<6) goStep(state.currentStep+1); }
+function prevStep() { if(state.currentStep>0) goStep(state.currentStep-1); }
 
-// ═══════════════════════════════════════════════
-// STEP 0
-// ═══════════════════════════════════════════════
-function updateSesion() {}
-
-// ═══════════════════════════════════════════════
-// STEP 1 — EQUIPO
-// ═══════════════════════════════════════════════
+// ══════════ EQUIPO ══════════
 function addEquipo() {
-  if (state.equipoCount >= 7) { alert('Máximo 7 integrantes.'); return; }
-  state.equipoCount++;
+  if (document.querySelectorAll('[data-eqid]').length >= 7) { alert('Máximo 7 integrantes.'); return; }
+  _eqCounter++;
+  _addEquipoRow('eq'+_eqCounter, '');
+}
+function _addEquipoRow(id, val) {
   const div = document.createElement('div');
+  div.id = 'wrap-'+id;
   div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
-  div.id = `eq-${state.equipoCount}`;
-  div.innerHTML = `
-    <input type="text" placeholder="Integrante ${state.equipoCount}" id="equipo-${state.equipoCount}" style="flex:1">
-    <button class="btn btn-danger btn-sm" onclick="removeEquipo(${state.equipoCount})">✕</button>`;
+  div.innerHTML = '<input type="text" data-eqid="'+id+'" value="'+val+'" placeholder="Nombre del integrante" style="flex:1" oninput="autosave()">'
+    +'<button class="btn btn-danger btn-sm" onclick="removeEquipo(\''+id+'\')">✕</button>';
   document.getElementById('equipo-list').appendChild(div);
 }
-function removeEquipo(n) {
-  const el = document.getElementById(`eq-${n}`);
-  if (el) el.remove();
-}
+function removeEquipo(id) { const el=document.getElementById('wrap-'+id); if(el){ el.remove(); autosave(); } }
 
-// ═══════════════════════════════════════════════
-// STEP 2 — RUTA
-// ═══════════════════════════════════════════════
+// ══════════ RUTA ══════════
 function buildRoutes() {
   const grid = document.getElementById('route-grid');
-  grid.innerHTML = '';
   RUTAS.forEach(r => {
     const div = document.createElement('div');
-    div.className = 'route-card';
-    div.id = `rc-${r.id}`;
-    const tipoBadge = r.tipo==='TR' ? `<span class="badge badge-tr">Transecto</span>` : `<span class="badge badge-pc">Punto de conteo</span>`;
-    let pts = '';
-    if (r.pc) {
-      const n = Math.abs(r.pc.hasta - r.pc.desde) + 1;
-      pts = `${n} puntos`;
-    } else {
-      pts = '1 transecto';
-    }
-    div.innerHTML = `<h3>${r.label}</h3><p>${r.zona}</p><p style="margin-top:4px">${tipoBadge} &nbsp; ${pts}</p>`;
+    div.className='route-card'; div.id='rc-'+r.id;
+    const badge = r.tipo==='TR'
+      ? '<span class="badge badge-tr">Transecto</span>'
+      : '<span class="badge badge-pc">Punto de conteo</span>';
+    const pts = r.pc ? (Math.abs(r.pc.hasta-r.pc.desde)+1)+' puntos' : '1 transecto';
+    div.innerHTML = '<h3>'+r.label+'</h3><p>'+r.zona+'</p><p style="margin-top:4px">'+badge+' &nbsp;'+pts+'</p>';
     div.onclick = () => selectRuta(r);
     grid.appendChild(div);
   });
 }
 
 function selectRuta(r) {
-  document.querySelectorAll('.route-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById(`rc-${r.id}`).classList.add('selected');
-  state.selectedRuta = r;
+  document.querySelectorAll('.route-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('rc-'+r.id).classList.add('selected');
+  state.selectedRutaId = r.id;
+  state.selectedRuta   = r;
   buildPuntos(r);
   renderRouteInfo(r);
+  autosave();
 }
 
 function buildPuntos(r) {
   state.puntos = [];
   if (r.pc) {
-    const desde = r.pc.desde, hasta = r.pc.hasta;
-    const step = desde <= hasta ? 1 : -1;
-    for (let i = desde; i !== hasta + step; i += step) {
-      state.puntos.push({ id:`pc-${i}`, codigo: r.pc.prefijo + i, tipo:'PC', obs:[], presion: emptyPresion() });
-    }
+    const desde=r.pc.desde, hasta=r.pc.hasta, step=desde<=hasta?1:-1;
+    for (let i=desde; i!==hasta+step; i+=step)
+      state.puntos.push({ id:'pc-'+i, codigo:r.pc.prefijo+i, tipo:'PC', obs:[], presion:emptyPresion(), horaInicio:'', horaFin:'' });
   }
-  if (r.transecto) {
-    state.puntos.push({ id:'tr-1', codigo: r.transecto.codigo, tipo:'TR', obs:[], presion: emptyPresion() });
-  }
+  if (r.transecto)
+    state.puntos.push({ id:'tr-1', codigo:r.transecto.codigo, tipo:'TR', obs:[], presion:emptyPresion(), horaInicio:'', horaFin:'' });
 }
 
-function emptyPresion() {
-  return { personas:'', autos:'', gatos:'', perros:'', nidos:'No', fenologia:'' };
-}
+function emptyPresion() { return { personas:'', autos:'', gatos:'', perros:'', nidos:'No', fenologia:'' }; }
 
 function renderRouteInfo(r) {
-  const box = document.getElementById('route-info');
-  const det = document.getElementById('route-detail');
-  box.style.display = '';
-  const pts = state.puntos.map(p => `<span class="badge ${p.tipo==='PC'?'badge-pc':'badge-tr'}" style="margin:2px">${p.codigo}</span>`).join(' ');
-  det.innerHTML = `
-    <div class="form-grid">
-      <div><label>Localidad</label><input type="text" value="${r.zona}" readonly></div>
-      <div><label>Código localidad</label><input type="text" value="${r.codLocalidad}" readonly></div>
-    </div>
-    <div style="margin-top:10px"><label>Puntos / Transectos</label><div style="margin-top:4px">${pts}</div></div>`;
+  document.getElementById('route-info').style.display='';
+  const pts = state.puntos.map(p=>
+    '<span class="badge '+(p.tipo==='PC'?'badge-pc':'badge-tr')+'" style="margin:2px">'+p.codigo+'</span>'
+  ).join(' ');
+  document.getElementById('route-detail').innerHTML =
+    '<div class="form-grid">'
+    +'<div><label>Localidad</label><input type="text" value="'+r.zona+'" readonly></div>'
+    +'<div><label>Código localidad</label><input type="text" value="'+r.codLocalidad+'" readonly></div>'
+    +'</div><div style="margin-top:10px"><label>Puntos / Transectos</label><div style="margin-top:4px">'+pts+'</div></div>';
 }
 
-// ═══════════════════════════════════════════════
-// STEP 3 — CONTEO
-// ═══════════════════════════════════════════════
+// ══════════ CONTEO ══════════
 function renderConteo() {
   if (!state.selectedRuta) {
-    document.getElementById('conteo-content').innerHTML = '<div class="alert alert-warning">Selecciona una ruta primero (paso 3).</div>';
-    document.getElementById('conteo-tabs').innerHTML = '';
+    document.getElementById('conteo-content').innerHTML='<div class="alert alert-warning">Selecciona una ruta primero (paso ③).</div>';
+    document.getElementById('conteo-tabs').innerHTML='';
     return;
   }
   const tabs = document.getElementById('conteo-tabs');
-  tabs.innerHTML = '';
-  state.puntos.forEach((p, i) => {
+  tabs.innerHTML='';
+  state.puntos.forEach((p,i) => {
     const btn = document.createElement('button');
-    btn.className = 'sub-tab' + (i===0 ? ' active' : '');
-    btn.textContent = p.codigo;
-    btn.onclick = () => { document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); showPunto(p); };
+    btn.className='sub-tab'+(i===0?' active':'');
+    btn.textContent=p.codigo;
+    btn.onclick=()=>{ document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); showPunto(p); };
     tabs.appendChild(btn);
   });
-  if (state.puntos.length > 0) showPunto(state.puntos[0]);
+  if (state.puntos.length) showPunto(state.puntos[0]);
 }
 
 function showPunto(p) {
-  const c = document.getElementById('conteo-content');
-  c.innerHTML = '';
+  const c=document.getElementById('conteo-content');
+  c.innerHTML='';
+  const isPC=p.tipo==='PC';
+  const card=document.createElement('div'); card.className='card';
+  card.innerHTML='<div class="card-title">'+(isPC?'🔵 Punto de Conteo':'🟡 Transecto')+': '+p.codigo+'</div>'
+    +'<div class="form-grid">'
+    +'<div><label>Hora inicio</label><input type="time" id="hi-'+p.id+'" value="'+(p.horaInicio||'')+'" onchange="saveHoraInicio(\''+p.id+'\',this.value)"></div>'
+    +'<div><label>Hora fin</label><input type="time" id="hf-'+p.id+'" value="'+(p.horaFin||'')+'" '+(isPC?'readonly':'')+' onchange="saveHoraFin(\''+p.id+'\',this.value)"></div>'
+    +'</div>'
+    +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px">PC: 2 intervalos de 5 min. Las columnas <strong>sombreadas en verde oscuro = intervalo 1 (0–5 min)</strong>. Sin sombra = intervalo 2 (5–10 min). La hora fin se calcula automáticamente.</div>':'');
+  c.appendChild(card);
 
-  // Header info
-  const isPC = p.tipo === 'PC';
-  const header = document.createElement('div');
-  header.className = 'card';
-  header.innerHTML = `
-    <div class="card-title">${isPC ? '🔵 Punto de Conteo' : '🟡 Transecto'}: ${p.codigo}</div>
-    <div class="form-grid">
-      <div><label>Hora inicio</label><input type="time" id="hi-${p.id}" value="${p.horaInicio||''}" onchange="saveHoraInicio('${p.id}', this.value)"></div>
-      <div><label>Hora fin</label><input type="time" id="hf-${p.id}" value="${p.horaFin||''}" ${isPC?'readonly':''} onchange="saveHoraFin('${p.id}', this.value)"></div>
-    </div>
-    ${isPC ? `<div class="alert alert-info" style="margin-top:10px;font-size:12px">PC: 2 intervalos de 5 min. Intervalo 1: 0–5 min | Intervalo 2: 5–10 min. La hora fin se calcula automáticamente.</div>` : ''}`;
-  c.appendChild(header);
+  const ctrl=document.createElement('div');
+  ctrl.style.cssText='margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
+  ctrl.innerHTML='<label style="font-size:12px;color:var(--muted);text-transform:none;font-weight:400;cursor:pointer">'
+    +'<input type="checkbox" id="asist-'+p.id+'" onchange="renderObsTable(\''+p.id+'\',this.checked)"> '
+    +'Mostrar columna asistemático (fuera de tiempo / &gt;50m)</label>'
+    +'<button class="btn btn-primary btn-sm" onclick="addObs(\''+p.id+'\')">+ Agregar avistamiento</button>';
+  c.appendChild(ctrl);
 
-  // Asistematico toggle
-  const asist = document.createElement('div');
-  asist.style.cssText = 'margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
-  asist.innerHTML = `
-    <label style="font-size:12px;color:var(--muted);text-transform:none;font-weight:400">
-      <input type="checkbox" id="asist-${p.id}" onchange="renderObsTable('${p.id}', this.checked)">
-      Mostrar columna asistema&shy;tico (fuera de tiempo / >50m)
-    </label>
-    <button class="btn btn-primary btn-sm" onclick="addObs('${p.id}')">+ Agregar avistamiento</button>`;
-  c.appendChild(asist);
-
-  // Table
-  const tableWrap = document.createElement('div');
-  tableWrap.id = `tw-${p.id}`;
-  c.appendChild(tableWrap);
+  const tw=document.createElement('div'); tw.id='tw-'+p.id;
+  c.appendChild(tw);
   renderObsTable(p.id, false);
 }
 
-function getPunto(pid) { return state.puntos.find(p => p.id === pid); }
+function gp(pid) { return state.puntos.find(p=>p.id===pid); }
 
 function saveHoraInicio(pid, val) {
-  const p = getPunto(pid);
-  if (!p) return;
-  p.horaInicio = val;
-  if (p.tipo === 'PC' && val) {
-    const [h, m] = val.split(':').map(Number);
-    const total = h * 60 + m + 10;
-    const nh = Math.floor(total / 60) % 24;
-    const nm = total % 60;
-    const fin = String(nh).padStart(2,'0') + ':' + String(nm).padStart(2,'0');
-    p.horaFin = fin;
-    const hf = document.getElementById('hf-' + pid);
-    if (hf) hf.value = fin;
+  const p=gp(pid); if(!p) return;
+  p.horaInicio=val;
+  if (p.tipo==='PC' && val) {
+    const [h,m]=val.split(':').map(Number);
+    const tot=h*60+m+10;
+    const fin=String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+    p.horaFin=fin;
+    const hf=document.getElementById('hf-'+pid); if(hf) hf.value=fin;
   }
+  autosave();
 }
-
-function saveHoraFin(pid, val) {
-  const p = getPunto(pid);
-  if (p) p.horaFin = val;
-}
+function saveHoraFin(pid, val) { const p=gp(pid); if(p){ p.horaFin=val; autosave(); } }
 
 function renderObsTable(pid, showAsist) {
-  const p = getPunto(pid);
-  const wrap = document.getElementById(`tw-${pid}`);
-  if (!wrap || !p) return;
-  const isPC = p.tipo === 'PC';
-
-  const especieOpts = ESPECIES.map(e => `<option value="${e[0]}">${e[0]} — ${e[2]}</option>`).join('');
-  const idOpts = IDENTIFICACION.map(i => `<option>${i}</option>`).join('');
-  const compOpts = COMPORTAMIENTO.map(c => `<option>${c}</option>`).join('');
-  const altOpts = ALTURA_FORRAJEO.map(a => `<option>${a}</option>`).join('');
-
-  let pcCols = isPC ? `
-    <th>0-5: &lt;25m</th><th>0-5: 25-50m</th>
-    <th>5-10: &lt;25m</th><th>5-10: 25-50m</th>` : `
-    <th>&lt;25m</th><th>25-50m</th>`;
-
-  let asistCol = showAsist ? `<th>Asistematico</th>` : '';
-
-  wrap.innerHTML = `<div class="table-wrap"><table class="obs-table">
-    <thead><tr>
-      <th>#</th><th>Especie (código)</th><th>Identificación</th><th>Comportamiento</th>
-      <th>Alt. forrajeo</th><th>Dist. obs. (m)</th>
-      ${pcCols}
-      ${asistCol}
-      <th>Eliminar</th>
-    </tr></thead>
-    <tbody id="obs-body-${pid}"></tbody>
-  </table></div>`;
-
-  p.obs.forEach((ob, idx) => renderObsRow(pid, idx, showAsist));
-}
-
-function addObs(pid) {
-  const p = getPunto(pid);
-  const isPC = p.tipo === 'PC';
-  p.obs.push({ especie:'', identificacion:'VISUAL', comportamiento:'', altForrajeo:'', distObs:'',
-    c1_25: '', c1_50: '', c2_25: '', c2_50: '', tr_25: '', tr_50: '', asist:'' });
-  const idx = p.obs.length - 1;
-  const showAsist = document.getElementById(`asist-${pid}`)?.checked || false;
-  renderObsTable(pid, showAsist);
+  const p=gp(pid); const wrap=document.getElementById('tw-'+pid);
+  if (!wrap||!p) return;
+  const isPC=p.tipo==='PC';
+  const pcCols = isPC
+    ? '<th class="col-shaded">0–5: &lt;25m</th><th class="col-shaded">0–5: 25-50m</th><th>5–10: &lt;25m</th><th>5–10: 25-50m</th>'
+    : '<th>&lt;25m</th><th>25-50m</th>';
+  const asistCol = showAsist?'<th>Asistemático</th>':'';
+  wrap.innerHTML='<div class="table-wrap"><table class="obs-table"><thead><tr>'
+    +'<th>#</th><th>Especie (código)</th><th>Identificación</th><th>Comportamiento</th>'
+    +'<th>Alt. forrajeo</th><th>Dist. obs. (m)</th>'
+    +pcCols+asistCol+'<th>Eliminar</th>'
+    +'</tr></thead><tbody id="obs-body-'+pid+'"></tbody></table></div>';
+  p.obs.forEach((_,idx)=>renderObsRow(pid,idx,showAsist));
 }
 
 function renderObsRow(pid, idx, showAsist) {
-  const p = getPunto(pid);
-  const ob = p.obs[idx];
-  const isPC = p.tipo === 'PC';
-  const especieOpts = ESPECIES.map(e => `<option value="${e[0]}" ${ob.especie===e[0]?'selected':''}>${e[0]} — ${e[2]}</option>`).join('');
-  const idOpts = IDENTIFICACION.map(i => `<option ${ob.identificacion===i?'selected':''}>${i}</option>`).join('');
-  const compOpts = COMPORTAMIENTO.map(c => `<option ${ob.comportamiento===c?'selected':''}>${c}</option>`).join('');
-  const altOpts = ALTURA_FORRAJEO.map(a => `<option ${ob.altForrajeo===a?'selected':''}>${a}</option>`).join('');
-
-  let pcCells = isPC ? `
-    <td><input type="number" min="0" style="width:50px" value="${ob.c1_25}" onchange="setOb('${pid}',${idx},'c1_25',this.value)"></td>
-    <td><input type="number" min="0" style="width:50px" value="${ob.c1_50}" onchange="setOb('${pid}',${idx},'c1_50',this.value)"></td>
-    <td><input type="number" min="0" style="width:50px" value="${ob.c2_25}" onchange="setOb('${pid}',${idx},'c2_25',this.value)"></td>
-    <td><input type="number" min="0" style="width:50px" value="${ob.c2_50}" onchange="setOb('${pid}',${idx},'c2_50',this.value)"></td>` : `
-    <td><input type="number" min="0" style="width:50px" value="${ob.tr_25}" onchange="setOb('${pid}',${idx},'tr_25',this.value)"></td>
-    <td><input type="number" min="0" style="width:50px" value="${ob.tr_50}" onchange="setOb('${pid}',${idx},'tr_50',this.value)"></td>`;
-
-  let asistCell = showAsist ? `<td><input type="number" min="0" style="width:50px" value="${ob.asist}" onchange="setOb('${pid}',${idx},'asist',this.value)"></td>` : '';
-
-  const tbody = document.getElementById(`obs-body-${pid}`);
-  const tr = document.createElement('tr');
-  tr.id = `ob-row-${pid}-${idx}`;
-  tr.innerHTML = `
-    <td style="font-weight:700;color:var(--muted)">${idx+1}</td>
-    <td><select style="width:180px" onchange="setOb('${pid}',${idx},'especie',this.value)"><option value="">— Especie —</option>${especieOpts}</select></td>
-    <td><select style="width:90px" onchange="setOb('${pid}',${idx},'identificacion',this.value)">${idOpts}</select></td>
-    <td><select style="width:160px" onchange="setOb('${pid}',${idx},'comportamiento',this.value)"><option value="">—</option>${compOpts}</select></td>
-    <td><select style="width:140px" onchange="setOb('${pid}',${idx},'altForrajeo',this.value)"><option value="">—</option>${altOpts}</select></td>
-    <td><input type="number" min="0" style="width:55px" value="${ob.distObs}" onchange="setOb('${pid}',${idx},'distObs',this.value)"></td>
-    ${pcCells}
-    ${asistCell}
-    <td><button class="btn btn-danger btn-sm" onclick="removeObs('${pid}',${idx})">✕</button></td>`;
-  tbody.appendChild(tr);
+  const p=gp(pid); const ob=p.obs[idx]; const isPC=p.tipo==='PC';
+  const eOpts = ESPECIES.map(e=>'<option value="'+e[0]+'" '+(ob.especie===e[0]?'selected':'')+'>'+e[0]+' — '+e[2]+'</option>').join('');
+  const idOpts = IDENTIFICACION.map(i=>'<option '+(ob.identificacion===i?'selected':'')+'>'+i+'</option>').join('');
+  const cOpts  = COMPORTAMIENTO.map(c=>'<option '+(ob.comportamiento===c?'selected':'')+'>'+c+'</option>').join('');
+  const aOpts  = ALTURA_FORRAJEO.map(a=>'<option '+(ob.altForrajeo===a?'selected':'')+'>'+a+'</option>').join('');
+  const pcCells = isPC
+    ? '<td class="col-shaded"><input type="number" min="0" style="width:44px" value="'+(ob.c1_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c1_25\',this.value)"></td>'
+      +'<td class="col-shaded"><input type="number" min="0" style="width:44px" value="'+(ob.c1_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c1_50\',this.value)"></td>'
+      +'<td><input type="number" min="0" style="width:44px" value="'+(ob.c2_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c2_25\',this.value)"></td>'
+      +'<td><input type="number" min="0" style="width:44px" value="'+(ob.c2_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c2_50\',this.value)"></td>'
+    : '<td><input type="number" min="0" style="width:44px" value="'+(ob.tr_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_25\',this.value)"></td>'
+      +'<td><input type="number" min="0" style="width:44px" value="'+(ob.tr_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_50\',this.value)"></td>';
+  const asistCell = showAsist
+    ? '<td><input type="number" min="0" style="width:44px" value="'+(ob.asist||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'asist\',this.value)"></td>' : '';
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td style="font-weight:700;color:var(--muted);text-align:center">'+(idx+1)+'</td>'
+    +'<td><select style="width:182px" onchange="setOb(\''+pid+'\','+idx+',\'especie\',this.value)"><option value="">— Especie —</option>'+eOpts+'</select></td>'
+    +'<td><select style="width:90px" onchange="setOb(\''+pid+'\','+idx+',\'identificacion\',this.value)">'+idOpts+'</select></td>'
+    +'<td><select style="width:168px" onchange="setOb(\''+pid+'\','+idx+',\'comportamiento\',this.value)"><option value="">—</option>'+cOpts+'</select></td>'
+    +'<td><select style="width:142px" onchange="setOb(\''+pid+'\','+idx+',\'altForrajeo\',this.value)"><option value="">—</option>'+aOpts+'</select></td>'
+    +'<td><input type="number" min="0" style="width:54px" value="'+(ob.distObs||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'distObs\',this.value)"></td>'
+    +pcCells+asistCell
+    +'<td><button class="btn btn-danger btn-sm" onclick="removeObs(\''+pid+'\','+idx+')">✕</button></td>';
+  document.getElementById('obs-body-'+pid).appendChild(tr);
 }
 
-function setOb(pid, idx, key, val) {
-  const p = getPunto(pid);
-  if (p && p.obs[idx]) p.obs[idx][key] = val;
+function addObs(pid) {
+  const p=gp(pid);
+  p.obs.push({ especie:'', identificacion:'VISUAL', comportamiento:'', altForrajeo:'', distObs:'',
+    c1_25:'',c1_50:'',c2_25:'',c2_50:'', tr_25:'',tr_50:'', asist:'' });
+  renderObsTable(pid, document.getElementById('asist-'+pid)?.checked||false);
+  autosave();
 }
-
+function setOb(pid, idx, key, val) { const p=gp(pid); if(p&&p.obs[idx]){ p.obs[idx][key]=val; autosave(); } }
 function removeObs(pid, idx) {
-  const p = getPunto(pid);
-  p.obs.splice(idx, 1);
-  const showAsist = document.getElementById(`asist-${pid}`)?.checked || false;
-  renderObsTable(pid, showAsist);
+  const p=gp(pid); p.obs.splice(idx,1);
+  renderObsTable(pid, document.getElementById('asist-'+pid)?.checked||false);
+  autosave();
 }
 
-// ═══════════════════════════════════════════════
-// STEP 4 — PRESIÓN ANTRÓPICA
-// ═══════════════════════════════════════════════
+// ══════════ PRESIÓN ══════════
 function renderPresion() {
-  const c = document.getElementById('presion-content');
-  c.innerHTML = '';
-  if (!state.selectedRuta || state.puntos.length === 0) {
-    c.innerHTML = '<div class="alert alert-warning">Selecciona una ruta primero.</div>';
-    return;
-  }
-  state.puntos.forEach(p => {
-    const pr = p.presion;
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `
-      <div class="card-title">${p.tipo==='PC'?'🔵':'🟡'} ${p.codigo}</div>
-      <div class="form-grid-4">
-        <div><label># Personas</label><input type="number" min="0" value="${pr.personas}" onchange="setPresion('${p.id}','personas',this.value)"></div>
-        <div><label># Automóviles</label><input type="number" min="0" value="${pr.autos}" onchange="setPresion('${p.id}','autos',this.value)"></div>
-        <div><label># Gatos</label><input type="number" min="0" value="${pr.gatos}" onchange="setPresion('${p.id}','gatos',this.value)"></div>
-        <div><label># Perros</label><input type="number" min="0" value="${pr.perros}" onchange="setPresion('${p.id}','perros',this.value)"></div>
-        <div><label>Presencia de nidos</label>
-          <select onchange="setPresion('${p.id}','nidos',this.value)">
-            <option ${pr.nidos==='No'?'selected':''}>No</option>
-            <option ${pr.nidos==='Sí'?'selected':''}>Sí</option>
-          </select>
-        </div>
-        <div class="full"><label>Fenología</label><input type="text" value="${pr.fenologia}" placeholder="Ej: floración, fructificación..." onchange="setPresion('${p.id}','fenologia',this.value)"></div>
-      </div>`;
+  const c=document.getElementById('presion-content'); c.innerHTML='';
+  if (!state.selectedRuta||!state.puntos.length) { c.innerHTML='<div class="alert alert-warning">Selecciona una ruta primero.</div>'; return; }
+  state.puntos.forEach(p=>{
+    const pr=p.presion; const div=document.createElement('div'); div.className='card';
+    div.innerHTML='<div class="card-title">'+(p.tipo==='PC'?'🔵':'🟡')+' '+p.codigo+'</div>'
+      +'<div class="form-grid-4">'
+      +'<div><label># Personas</label><input type="number" min="0" value="'+pr.personas+'" onchange="setPr(\''+p.id+'\',\'personas\',this.value)"></div>'
+      +'<div><label># Automóviles</label><input type="number" min="0" value="'+pr.autos+'" onchange="setPr(\''+p.id+'\',\'autos\',this.value)"></div>'
+      +'<div><label># Gatos</label><input type="number" min="0" value="'+pr.gatos+'" onchange="setPr(\''+p.id+'\',\'gatos\',this.value)"></div>'
+      +'<div><label># Perros</label><input type="number" min="0" value="'+pr.perros+'" onchange="setPr(\''+p.id+'\',\'perros\',this.value)"></div>'
+      +'<div><label>Presencia de nidos</label><select onchange="setPr(\''+p.id+'\',\'nidos\',this.value)">'
+        +'<option '+(pr.nidos==='No'?'selected':'')+'>No</option>'
+        +'<option '+(pr.nidos==='Sí'?'selected':'')+'>Sí</option></select></div>'
+      +'<div class="full"><label>Fenología</label><input type="text" value="'+pr.fenologia+'" placeholder="Ej: floración, fructificación..." onchange="setPr(\''+p.id+'\',\'fenologia\',this.value)"></div>'
+      +'</div>';
     c.appendChild(div);
   });
 }
+function setPr(pid, key, val) { const p=gp(pid); if(p){ p.presion[key]=val; autosave(); } }
 
-function setPresion(pid, key, val) {
-  const p = getPunto(pid);
-  if (p) p.presion[key] = val;
-}
-
-// ═══════════════════════════════════════════════
-// STEP 5 — NIDOS
-// ═══════════════════════════════════════════════
+// ══════════ NIDOS ══════════
 function renderNidos() {
-  const list = document.getElementById('nidos-list');
-  list.innerHTML = '';
-  if (state.nidos.length === 0) {
-    list.innerHTML = '<p class="text-muted">No hay nidos registrados.</p>';
-    return;
-  }
-  const ptOpts = state.puntos.map(p => `<option value="${p.codigo}">${p.codigo}</option>`).join('');
-  state.nidos.forEach((n, i) => {
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.style.borderLeft = '4px solid var(--accent)';
-    div.innerHTML = `
-      <div class="flex-between" style="margin-bottom:10px">
-        <span class="badge badge-nido">Nido #${i+1}</span>
-        <button class="btn btn-danger btn-sm" onclick="removeNido(${i})">Eliminar</button>
-      </div>
-      <div class="form-grid">
-        <div><label>Punto/Transecto</label><select onchange="setNido(${i},'punto',this.value)"><option value="">—</option>${ptOpts}</select></div>
-        <div><label>Especie (si conocida)</label>
-          <select onchange="setNido(${i},'especie',this.value)">
-            <option value="">Desconocida</option>
-            ${ESPECIES.map(e=>`<option value="${e[0]}" ${n.especie===e[0]?'selected':''}>${e[0]} — ${e[2]}</option>`).join('')}
-          </select>
-        </div>
-        <div><label>Coord. UTM Este (m)</label><input type="number" value="${n.este||''}" placeholder="ej. 234567" onchange="setNido(${i},'este',this.value)"></div>
-        <div><label>Coord. UTM Norte (m)</label><input type="number" value="${n.norte||''}" placeholder="ej. 8190000" onchange="setNido(${i},'norte',this.value)"></div>
-        <div><label>Zona UTM</label><input type="text" value="${n.zona||'18S'}" placeholder="18S" onchange="setNido(${i},'zona',this.value)"></div>
-        <div><label>Notas</label><input type="text" value="${n.notas||''}" onchange="setNido(${i},'notas',this.value)"></div>
-      </div>`;
+  const list=document.getElementById('nidos-list'); list.innerHTML='';
+  if (!state.nidos.length) { list.innerHTML='<p class="text-muted">No hay nidos registrados.</p>'; return; }
+  const ptOpts=state.puntos.map(p=>'<option value="'+p.codigo+'">'+p.codigo+'</option>').join('');
+  state.nidos.forEach((n,i)=>{
+    const div=document.createElement('div'); div.className='card'; div.style.cssText='border-left:4px solid var(--accent);margin-bottom:12px';
+    div.innerHTML='<div class="flex-between" style="margin-bottom:10px">'
+      +'<span class="badge badge-nido">Nido #'+(i+1)+'</span>'
+      +'<button class="btn btn-danger btn-sm" onclick="removeNido('+i+')">Eliminar</button></div>'
+      +'<div class="form-grid">'
+      +'<div><label>Punto/Transecto</label><select onchange="setNido('+i+',\'punto\',this.value)"><option value="">—</option>'+ptOpts+'</select></div>'
+      +'<div><label>Especie (si conocida)</label><select onchange="setNido('+i+',\'especie\',this.value)"><option value="">Desconocida</option>'
+        +ESPECIES.map(e=>'<option value="'+e[0]+'" '+(n.especie===e[0]?'selected':'')+'>'+e[0]+' — '+e[2]+'</option>').join('')+'</select></div>'
+      +'<div><label>UTM Este (m)</label><input type="number" value="'+(n.este||'')+'" placeholder="ej. 234567" onchange="setNido('+i+',\'este\',this.value)"></div>'
+      +'<div><label>UTM Norte (m)</label><input type="number" value="'+(n.norte||'')+'" placeholder="ej. 8190000" onchange="setNido('+i+',\'norte\',this.value)"></div>'
+      +'<div><label>Zona UTM</label><input type="text" value="'+(n.zona||'18S')+'" onchange="setNido('+i+',\'zona\',this.value)"></div>'
+      +'<div><label>Notas</label><input type="text" value="'+(n.notas||'')+'" onchange="setNido('+i+',\'notas\',this.value)"></div>'
+      +'</div>';
     list.appendChild(div);
   });
 }
+function addNido()            { state.nidos.push({punto:'',especie:'',este:'',norte:'',zona:'18S',notas:''}); renderNidos(); autosave(); }
+function removeNido(i)        { state.nidos.splice(i,1); renderNidos(); autosave(); }
+function setNido(i,key,val)   { state.nidos[i][key]=val; autosave(); }
 
-function addNido() {
-  state.nidos.push({ punto:'', especie:'', este:'', norte:'', zona:'18S', notas:'' });
-  renderNidos();
-}
-function removeNido(i) { state.nidos.splice(i,1); renderNidos(); }
-function setNido(i, key, val) { state.nidos[i][key] = val; }
-
-// ═══════════════════════════════════════════════
-// STEP 6 — EXPORT SUMMARY
-// ═══════════════════════════════════════════════
+// ══════════ EXPORT SUMMARY ══════════
 function renderExportSummary() {
-  const totalObs = state.puntos.reduce((s,p) => s + p.obs.length, 0);
+  const totalObs    = state.puntos.reduce((s,p)=>s+p.obs.length,0);
   const totalPuntos = state.puntos.length;
-  const nidos = state.nidos.length;
-  const ruta = state.selectedRuta ? state.selectedRuta.label : '—';
-  document.getElementById('export-summary').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${totalPuntos}</div><div class="stat-label">Puntos/Transectos</div></div>
-    <div class="stat-card"><div class="stat-num">${totalObs}</div><div class="stat-label">Avistamientos</div></div>
-    <div class="stat-card"><div class="stat-num">${nidos}</div><div class="stat-label">Nidos registrados</div></div>
-    <div class="stat-card"><div class="stat-num" style="font-size:16px">${ruta}</div><div class="stat-label">Ruta</div></div>`;
+  const especiesSet = new Set();
+  state.puntos.forEach(p=>p.obs.forEach(ob=>{ if(ob.especie) especiesSet.add(ob.especie); }));
+  const ruta = state.selectedRuta?state.selectedRuta.label:'—';
+  document.getElementById('export-summary').innerHTML =
+    '<div class="stat-card"><div class="stat-num">'+totalPuntos+'</div><div class="stat-label">Puntos/Transectos</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+totalObs+'</div><div class="stat-label">Avistamientos</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+especiesSet.size+'</div><div class="stat-label">Especies distintas</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+state.nidos.length+'</div><div class="stat-label">Nidos registrados</div></div>'
+    +'<div class="stat-card"><div class="stat-num" style="font-size:13px;padding-top:6px">'+ruta+'</div><div class="stat-label">Ruta</div></div>';
 }
 
-// ═══════════════════════════════════════════════
-// EXCEL EXPORT
-// ═══════════════════════════════════════════════
-function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+// ══════════ EXCEL EXPORT ══════════
+function gv(id) { const el=document.getElementById(id); return el?el.value:''; }
 function getEquipo() {
-  const arr = [];
-  for (let i = 1; i <= 7; i++) {
-    const v = getVal(`equipo-${i}`);
-    if (v) arr.push(v);
-  }
-  return arr.join(' / ');
+  const vals=[]; document.querySelectorAll('[data-eqid]').forEach(inp=>{ if(inp.value) vals.push(inp.value); });
+  return vals.join(' / ');
 }
-
-const HEADER_STYLE = { font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 }, fill: { fgColor: { rgb: '1a6b3c' } }, alignment: { horizontal: 'center', wrapText: true }, border: { bottom: { style: 'thin' } } };
-const SUBHEADER = { font: { bold: true, sz: 10 }, fill: { fgColor: { rgb: 'e8f5ee' } }, alignment: { horizontal: 'center' } };
-const TITLE_STYLE = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
-
-function setCellStyle(ws, addr, style) {
-  if (!ws[addr]) ws[addr] = { v: '', t: 's' };
-  ws[addr].s = style;
-}
-
-function applyHeaderStyle(ws, range, row) {
-  for (let c = range[0]; c <= range[1]; c++) {
-    const addr = XLSX.utils.encode_cell({ r: row, c });
-    if (!ws[addr]) ws[addr] = { v: '', t: 's' };
-    ws[addr].s = HEADER_STYLE;
-  }
-}
-
-function createMetaBlock() {
-  // Returns rows for the metadata block
-  const fecha = getVal('fecha');
-  const r = state.selectedRuta;
+function meta() {
+  const r=state.selectedRuta;
+  const mon=gv('monitor1')+(gv('monitor2')?' / '+gv('monitor2'):'');
   return [
-    ['MAUP — Monitoreo de Aves Urbanas del Perú', '', '', '', '', '', '', '', '', '', '', '', ''],
-    [''],
-    ['Nombre del monitor:', getVal('monitor1') + (getVal('monitor2') ? ' / ' + getVal('monitor2') : ''),
-     '', '', '', '', 'Precipitación (%):',getVal('precipitacion'),'', 'Temperatura (°C):',getVal('temperatura')],
-    ['Nombres del equipo:', getEquipo(), '', '', 'Ciudad:','Arequipa', 'Nubosidad (%):', getVal('nubosidad')],
-    ['Nombre localidad:', r ? r.zona : '', '', '', 'Fecha:', fecha, 'Vel. Viento (km/h):', getVal('velviento')],
-    ['Tipo de hábitat:', r ? r.zona : '', '', '', 'Hora inicio:', '(ver tabla)', 'Humedad (%):', getVal('humedad')],
-    ['Tipo de censo:', r ? r.tipo==='PC' ? 'Punto de conteo' : 'Transecto' : '', '', '', 'Hora final:', '(ver tabla)', 'Viento:', getVal('viento')],
-    [''],
+    ['MAUP — Monitoreo de Aves Urbanas del Perú'],[' '],
+    ['Nombre del monitor:',mon,'','','','','Precipitación (%):',gv('precipitacion'),'','Temperatura (°C):',gv('temperatura')],
+    ['Nombres del equipo:',getEquipo(),'','','Ciudad:','Arequipa','Nubosidad (%):',gv('nubosidad')],
+    ['Nombre localidad:',r?r.zona:'','','','Fecha:',gv('fecha'),'Vel. Viento (km/h):',gv('velviento')],
+    ['Tipo de hábitat:',r?r.zona:'','','','Hora inicio:','(ver tabla)','Humedad (%):',gv('humedad')],
+    ['Tipo de censo:',r?r.tipo==='PC'?'Punto de conteo':'Transecto':'','','','Hora final:','(ver tabla)','Viento:',gv('viento')],
+    [' '],
   ];
 }
-
-function createObsHeaders(isPC) {
-  if (isPC) {
-    return [
-      ['Localidad (Código)','Código PC/Transecto','Hora inicio','Hora final','Especie (código)','Identificación','Comportamiento','Altura de forrajeo','Distancia obs. (m)',
-       'Abundancia 0-5 min','','Abundancia 5-10 min','','Asistemático'],
-      ['','','','','','','','','','< 25 m','25-50 m','< 25 m','25-50 m','']
-    ];
-  } else {
-    return [
-      ['Localidad (Código)','Código PC/Transecto','Hora inicio','Hora final','Especie (código)','Identificación','Comportamiento','Altura de forrajeo','Distancia obs. (m)',
-       'Abundancia','','Asistemático'],
-      ['','','','','','','','','','< 25 m','25-50 m','']
-    ];
-  }
+function obsHeaders(isPC) {
+  return isPC ? [
+    ['Localidad (Código)','Código PC/Transecto','Hora inicio','Hora final','Especie (código)','Identificación','Comportamiento','Altura de forrajeo','Dist. obs. (m)',
+     'Abundancia 0–5 min','','Abundancia 5–10 min','','Asistemático'],
+    ['','','','','','','','','','< 25 m','25-50 m','< 25 m','25-50 m','']
+  ] : [
+    ['Localidad (Código)','Código PC/Transecto','Hora inicio','Hora final','Especie (código)','Identificación','Comportamiento','Altura de forrajeo','Dist. obs. (m)',
+     'Abundancia','','Asistemático'],
+    ['','','','','','','','','','< 25 m','25-50 m','']
+  ];
 }
-
-function createObsRows(puntos, isPC) {
-  const rows = [];
-  puntos.forEach(p => {
-    if (p.obs.length === 0) {
-      // Empty row for the point
-      if (isPC) rows.push([state.selectedRuta?.codLocalidad||'', p.codigo, p.horaInicio||'', p.horaFin||'','','','','','','','','','','']);
-      else rows.push([state.selectedRuta?.codLocalidad||'', p.codigo, p.horaInicio||'', p.horaFin||'','','','','','','','','']);
+function obsRows(puntos, isPC) {
+  const rows=[]; const cod=state.selectedRuta?.codLocalidad||'';
+  puntos.forEach(p=>{
+    if (!p.obs.length) {
+      rows.push(isPC ? [cod,p.codigo,p.horaInicio||'',p.horaFin||'','','','','','','','','','','']
+                     : [cod,p.codigo,p.horaInicio||'',p.horaFin||'','','','','','','','','']);
     } else {
-      p.obs.forEach(ob => {
-        if (isPC) rows.push([state.selectedRuta?.codLocalidad||'', p.codigo, p.horaInicio||'', p.horaFin||'',
-          ob.especie, ob.identificacion, ob.comportamiento, ob.altForrajeo, ob.distObs,
-          ob.c1_25, ob.c1_50, ob.c2_25, ob.c2_50, ob.asist||'']);
-        else rows.push([state.selectedRuta?.codLocalidad||'', p.codigo, p.horaInicio||'', p.horaFin||'',
-          ob.especie, ob.identificacion, ob.comportamiento, ob.altForrajeo, ob.distObs,
-          ob.tr_25, ob.tr_50, ob.asist||'']);
+      p.obs.forEach(ob=>{
+        rows.push(isPC
+          ? [cod,p.codigo,p.horaInicio||'',p.horaFin||'',ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.c1_25,ob.c1_50,ob.c2_25,ob.c2_50,ob.asist||'']
+          : [cod,p.codigo,p.horaInicio||'',p.horaFin||'',ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.tr_25,ob.tr_50,ob.asist||'']);
       });
     }
   });
   return rows;
 }
-
-function createPresionHeaders() {
-  return [['Localidad (Código)','Código PC/Transecto','# Personas','# Automóviles','# Gatos','# Perros','Presencia de nidos','Fenología']];
-}
-function createPresionRows(puntos) {
-  return puntos.map(p => [
-    state.selectedRuta?.codLocalidad||'', p.codigo,
-    p.presion.personas, p.presion.autos, p.presion.gatos, p.presion.perros,
-    p.presion.nidos, p.presion.fenologia
-  ]);
-}
-
-function createNidosRows() {
-  return state.nidos.map(n => [n.punto, n.especie, n.este, n.norte, n.zona, n.notas]);
-}
-
-function buildSheet(metaRows, obsHeaders, obsRows, presionHeaders, presionRows, isPC) {
-  const wb = XLSX.utils.book_new();
-  const r = state.selectedRuta;
-  const puntos = state.puntos.filter(p => isPC ? p.tipo==='PC' : p.tipo==='TR');
-
-  // Sheet: conteo
-  const sheetData = [
-    ...metaRows,
-    ...obsHeaders,
-    ...obsRows,
-    [],
-    ['PRESIÓN ANTRÓPICA'],
-    ...presionHeaders,
-    ...presionRows,
-  ];
-  return XLSX.utils.aoa_to_sheet(sheetData);
+function presRows(puntos) {
+  const cod=state.selectedRuta?.codLocalidad||'';
+  return puntos.map(p=>[cod,p.codigo,p.presion.personas,p.presion.autos,p.presion.gatos,p.presion.perros,p.presion.nidos,p.presion.fenologia]);
 }
 
 function exportExcel() {
   if (!state.selectedRuta) { alert('Selecciona una ruta antes de exportar.'); return; }
+  const wb=XLSX.utils.book_new();
+  const m=meta();
+  const pcP=state.puntos.filter(p=>p.tipo==='PC');
+  const trP=state.puntos.filter(p=>p.tipo==='TR');
+  const presH=[['Localidad (Código)','Código PC/Transecto','# Personas','# Automóviles','# Gatos','# Perros','Presencia de nidos','Fenología']];
 
-  const wb = XLSX.utils.book_new();
-  const meta = createMetaBlock();
-  const r = state.selectedRuta;
-
-  const pcPuntos = state.puntos.filter(p => p.tipo==='PC');
-  const trPuntos = state.puntos.filter(p => p.tipo==='TR');
-
-  // PC SHEET
-  if (pcPuntos.length > 0) {
-    const obsH = createObsHeaders(true);
-    const obsR = createObsRows(pcPuntos, true);
-    const presH = createPresionHeaders();
-    const presR = createPresionRows(pcPuntos);
-    const data = [
-      ...meta,
-      ...obsH,
-      ...obsR,
-      [],
-      ['PRESIÓN ANTRÓPICA'],
-      ...presH,
-      ...presR,
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    // col widths
-    ws['!cols'] = [15,22,10,10,14,12,18,16,12,10,10,10,10,12].map(w=>({wch:w}));
-    // Merge title
-    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:12} }];
-    XLSX.utils.book_append_sheet(wb, ws, 'PC - Puntos de Conteo');
+  if (pcP.length) {
+    const ws=XLSX.utils.aoa_to_sheet([...m,...obsHeaders(true),...obsRows(pcP,true),[],'PRESIÓN ANTRÓPICA'.split(''), ...presH,...presRows(pcP)]);
+    ws['!cols']=[15,22,10,10,14,12,18,16,12,10,10,10,10,12].map(w=>({wch:w}));
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:12}}];
+    XLSX.utils.book_append_sheet(wb,ws,'PC - Puntos de Conteo');
   }
-
-  // TRANSECTO SHEET
-  if (trPuntos.length > 0) {
-    const obsH = createObsHeaders(false);
-    const obsR = createObsRows(trPuntos, false);
-    const presH = createPresionHeaders();
-    const presR = createPresionRows(trPuntos);
-    const data = [
-      ...meta,
-      ...obsH,
-      ...obsR,
-      [],
-      ['PRESIÓN ANTRÓPICA'],
-      ...presH,
-      ...presR,
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [15,22,10,10,14,12,18,16,12,10,10,12].map(w=>({wch:w}));
-    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:11} }];
-    XLSX.utils.book_append_sheet(wb, ws, 'TR - Transectos');
+  if (trP.length) {
+    const ws=XLSX.utils.aoa_to_sheet([...m,...obsHeaders(false),...obsRows(trP,false),[],'PRESIÓN ANTRÓPICA'.split(''),...presH,...presRows(trP)]);
+    ws['!cols']=[15,22,10,10,14,12,18,16,12,10,10,12].map(w=>({wch:w}));
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:11}}];
+    XLSX.utils.book_append_sheet(wb,ws,'TR - Transectos');
   }
-
-  // NIDOS SHEET
-  if (state.nidos.length > 0) {
-    const data = [
-      ['REGISTRO DE NIDOS — MAUP'],
-      [],
-      ['Punto/Transecto', 'Especie', 'UTM Este (m)', 'UTM Norte (m)', 'Zona UTM', 'Notas'],
-      ...createNidosRows()
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [22,16,16,16,10,30].map(w=>({wch:w}));
-    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Nidos');
+  if (state.nidos.length) {
+    const ws=XLSX.utils.aoa_to_sheet([['REGISTRO DE NIDOS — MAUP'],[' '],
+      ['Punto/Transecto','Especie','UTM Este (m)','UTM Norte (m)','Zona UTM','Notas'],
+      ...state.nidos.map(n=>[n.punto,n.especie,n.este,n.norte,n.zona,n.notas])]);
+    ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:16},{wch:10},{wch:30}];
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+    XLSX.utils.book_append_sheet(wb,ws,'Nidos');
   }
+  const wsE=XLSX.utils.aoa_to_sheet([['LISTA DE ESPECIES — MAUP Arequipa'],[' '],
+    ['Código','Nombre científico','Nombre español'],...ESPECIES.map(e=>[e[0],e[1],e[2]])]);
+  wsE['!cols']=[{wch:12},{wch:30},{wch:30}];
+  wsE['!merges']=[{s:{r:0,c:0},e:{r:0,c:2}}];
+  XLSX.utils.book_append_sheet(wb,wsE,'Referencia Especies');
 
-  // ESPECIES REF SHEET
-  const espData = [
-    ['LISTA DE ESPECIES — MAUP Arequipa'],
-    [],
-    ['Código','Nombre científico','Nombre español'],
-    ...ESPECIES.map(e => [e[0], e[1], e[2]])
-  ];
-  const wsEsp = XLSX.utils.aoa_to_sheet(espData);
-  wsEsp['!cols'] = [{wch:12},{wch:30},{wch:30}];
-  wsEsp['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:2} }];
-  XLSX.utils.book_append_sheet(wb, wsEsp, 'Referencia Especies');
-
-  // Filename
-  const fecha = getVal('fecha') || new Date().toISOString().slice(0,10);
-  const rutaLabel = r.label.replace(/[^a-zA-Z0-9]/g,'_');
-  XLSX.writeFile(wb, `MAUP_${rutaLabel}_${fecha}.xlsx`);
+  const fecha=gv('fecha')||new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,'MAUP_'+state.selectedRuta.label.replace(/[^a-zA-Z0-9]/g,'_')+'_'+fecha+'.xlsx');
 }
 
 function showPreview() {
-  const area = document.getElementById('preview-area');
-  const totalObs = state.puntos.reduce((s,p) => s + p.obs.length, 0);
-  if (totalObs === 0) { area.innerHTML = '<div class="alert alert-warning">No hay avistamientos registrados.</div>'; return; }
-  let html = '<div class="table-wrap"><table class="obs-table"><thead><tr><th>Punto</th><th>Especie</th><th>Identificación</th><th>Comportamiento</th><th>Obs.</th></tr></thead><tbody>';
-  state.puntos.forEach(p => {
-    p.obs.forEach(ob => {
-      html += `<tr><td>${p.codigo}</td><td>${ob.especie}</td><td>${ob.identificacion}</td><td>${ob.comportamiento}</td><td>${ob.distObs?ob.distObs+'m':''}</td></tr>`;
-    });
-  });
-  html += '</tbody></table></div>';
-  area.innerHTML = html;
+  const area=document.getElementById('preview-area');
+  const totalObs=state.puntos.reduce((s,p)=>s+p.obs.length,0);
+  if (!totalObs) { area.innerHTML='<div class="alert alert-warning">No hay avistamientos registrados aún.</div>'; return; }
+  let html='<div class="table-wrap"><table class="obs-table"><thead><tr><th>Punto</th><th>Especie</th><th>Identificación</th><th>Comportamiento</th><th>Distancia</th></tr></thead><tbody>';
+  state.puntos.forEach(p=>p.obs.forEach(ob=>{
+    html+='<tr><td>'+p.codigo+'</td><td>'+ob.especie+'</td><td>'+ob.identificacion+'</td><td>'+ob.comportamiento+'</td><td>'+(ob.distObs?ob.distObs+'m':'')+'</td></tr>';
+  }));
+  html+='</tbody></table></div>';
+  area.innerHTML=html;
 }
 
-// ═══════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════
+// ══════════ INIT ══════════
 buildRoutes();
-addEquipo(); // Add first equipo row
-
-// Set today's date
-const today = new Date().toISOString().slice(0,10);
-document.getElementById('fecha').value = today;
+const restored = loadSave();
+if (!restored) {
+  document.getElementById('fecha').value = new Date().toISOString().slice(0,10);
+  _eqCounter=1; _addEquipoRow('eq1','');
+}
 </script>
 </body>
 </html>
