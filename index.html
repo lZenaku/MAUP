@@ -774,13 +774,13 @@ function exportExcel() {
   const presH=[['Localidad (Código)','Código PC/Transecto','# Personas','# Automóviles','# Gatos','# Perros','Presencia de nidos','Fenología']];
 
   if (pcP.length) {
-    const ws=XLSX.utils.aoa_to_sheet([...m,...obsHeaders(true),...obsRows(pcP,true),[],'PRESIÓN ANTRÓPICA'.split(''), ...presH,...presRows(pcP)]);
+    const ws=XLSX.utils.aoa_to_sheet([...m,...obsHeaders(true),...obsRows(pcP,true),[],['PRESIÓN ANTRÓPICA'], ...presH,...presRows(pcP)]);
     ws['!cols']=[15,22,10,10,14,12,18,16,12,10,10,10,10,12].map(w=>({wch:w}));
     ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:12}}];
     XLSX.utils.book_append_sheet(wb,ws,'PC - Puntos de Conteo');
   }
   if (trP.length) {
-    const ws=XLSX.utils.aoa_to_sheet([...m,...obsHeaders(false),...obsRows(trP,false),[],'PRESIÓN ANTRÓPICA'.split(''),...presH,...presRows(trP)]);
+    const ws=XLSX.utils.aoa_to_sheet([...m,...obsHeaders(false),...obsRows(trP,false),[],['PRESIÓN ANTRÓPICA'], ...presH,...presRows(trP)]);
     ws['!cols']=[15,22,10,10,14,12,18,16,12,10,10,12].map(w=>({wch:w}));
     ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:11}}];
     XLSX.utils.book_append_sheet(wb,ws,'TR - Transectos');
