@@ -317,9 +317,9 @@ input[readonly] { background: var(--input-readonly); color: var(--muted); }
 <script>
 // ══════════ CONSTANTS ══════════
 const RUTAS = [
-  { id:'r1',  label:'Ruta 1', zona:'Campus Ingenierías y Biomédicas de la UNSA', tipo:'PC', codLocalidad:'ARE-CAMP-UNSA',
+  { id:'r1',  label:'Ruta 1 — Campus', zona:'Campus Ingenierías y Biomédicas de la UNSA', tipo:'PC', codLocalidad:'ARE-CAMP-UNSA',
     pc:{ desde:1, hasta:11, prefijo:'ARE-CAM-UNSA-PC-' } },
-  { id:'r2',  label:'Ruta 2', zona:'Monte Ribereño y Avenida', tipo:'PC', codLocalidad:'ARE-VALL',
+  { id:'r2',  label:'Ruta 2 — Vallecito', zona:'Monte Ribereño y Avenida', tipo:'PC', codLocalidad:'ARE-VAL',
     pc:{ desde:10, hasta:1, prefijo:'ARE-VAL-PC-' } },
   { id:'r3a', label:'Ruta 3 — Av. Ejército', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVE',
     transecto:{ codigo:'ARE-AVE-T1' } },
@@ -334,7 +334,7 @@ const ESPECIES = [
   ['ACT MAC','Actitis macularius','Playero Coleador'],['AER AND','Aeronautes andecolus','Vencejo Andino'],
   ['ANA FLA','Anas flavirostris','Pato Barcino'],['ARD ALB','Ardea alba','Garza Grande'],
   ['ATH CUN','Athene cunicularia','Lechuza Terrestre'],['BUB IBI','Bubulcus ibis','Garcita Bueyera'],
-  ['CAT AUR','Cathartes aura','Gallinazo de Cabeza Roja'],['CHR SER','Chroicocephalus serranus','Gaviota Andina'],
+  ['CAT AUR','Cathartes aura','Gallinazo de Cabeza Roja'],['CHR SER','Chroicocephalus serranus','Gaviota Andina'],['CIN LEU','Cinclus leucocephalus','Mirlo Acuático Coroniblanco'],
   ['COL LIV','Columba livia','Paloma Doméstica'],['COL CRU','Columbina cruziana','Tortolita Peruana'],
   ['CON CIN','Conirostrum cinereum','Pico-de-Cono Cinéreo'],['CRO SUL','Crotophaga sulcirostris','Garrapatero de Pico Estriado'],
   ['DIV WAR','Dives warczewiczi','Tordo de Matorral'],['EGR THU','Egretta thula','Garcita Blanca'],
@@ -360,8 +360,8 @@ const ESPECIES = [
   ['ZON CAP','Zonotrichia capensis','Gorrión de Collar Rufo'],
 ];
 const IDENTIFICACION  = ['VISUAL','AUDITIVO'];
-const COMPORTAMIENTO  = ['Volando','Forrajeando','Interactuando','Perchado','Reposo (estructura humana)','Vocalizando','Caminando'];
-const ALTURA_FORRAJEO = ['SUELO','ESTRUCTURA HUMANA','DESCONOCIDO','DOSEL','SUBDOSEL','ESTRATO MEDIO','SOTOBOSQUE'];
+const COMPORTAMIENTO  = ['Vuelo','Forrajeando','Interactuando','Perchado','Descanso','Vocalizando','Caminando','Acicalandose','Anidando','Reproductivo','Nidificando','Acarreo'];
+const ALTURA_FORRAJEO = ['Aereo','Suelo','Estructura','-','Dosel','Subdosel','Estrato_medio','Sotobosque'];
 const STORAGE_KEY     = 'maup_v3';
 
 // ══════════ STATE ══════════
@@ -562,20 +562,24 @@ function showPunto(p) {
     +'<div><label>Hora inicio</label><input type="time" id="hi-'+p.id+'" value="'+(p.horaInicio||'')+'" onchange="saveHoraInicio(\''+p.id+'\',this.value)"></div>'
     +'<div><label>Hora fin</label><input type="time" id="hf-'+p.id+'" value="'+(p.horaFin||'')+'" '+(isPC?'readonly':'')+' onchange="saveHoraFin(\''+p.id+'\',this.value)"></div>'
     +'</div>'
-    +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px">PC: 2 intervalos de 5 min. Las columnas <strong>sombreadas en verde oscuro = intervalo 1 (0–5 min)</strong>. Sin sombra = intervalo 2 (5–10 min). La hora fin se calcula automáticamente.</div>':'');
+    +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px">PC: Se realizan 2 intervalos de 5 min. Las columnas <strong>sombreadas en verde oscuro = intervalo 1 (0–5 min)</strong>. Sin sombra = intervalo 2 (5–10 min). La hora fin se calcula automáticamente.</div>':'');
   c.appendChild(card);
 
   const ctrl=document.createElement('div');
   ctrl.style.cssText='margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
   ctrl.innerHTML='<label style="font-size:12px;color:var(--muted);text-transform:none;font-weight:400;cursor:pointer">'
     +'<input type="checkbox" id="asist-'+p.id+'" onchange="renderObsTable(\''+p.id+'\',this.checked)"> '
-    +'Mostrar columna asistemático (fuera de tiempo / &gt;50m)</label>'
-    +'<button class="btn btn-primary btn-sm" onclick="addObs(\''+p.id+'\')">+ Agregar avistamiento</button>';
+    +'Mostrar columna asistemático (fuera de tiempo / &gt;50m)</label>';
   c.appendChild(ctrl);
 
   const tw=document.createElement('div'); tw.id='tw-'+p.id;
   c.appendChild(tw);
   renderObsTable(p.id, false);
+
+  const addCtrl=document.createElement('div');
+  addCtrl.style.cssText='margin-top:12px;display:flex;justify-content:flex-end;';
+  addCtrl.innerHTML='<button class="btn btn-primary" onclick="addObs(\''+p.id+'\')">+ Agregar avistamiento</button>';
+  c.appendChild(addCtrl);
 }
 
 function gp(pid) { return state.puntos.find(p=>p.id===pid); }
@@ -689,26 +693,46 @@ function renderNidos() {
         +ESPECIES.map(e=>'<option value="'+e[0]+'" '+(n.especie===e[0]?'selected':'')+'>'+e[0]+' — '+e[2]+'</option>').join('')+'</select></div>'
       +'<div><label>UTM Este (m)</label><input type="number" value="'+(n.este||'')+'" placeholder="ej. 234567" onchange="setNido('+i+',\'este\',this.value)"></div>'
       +'<div><label>UTM Norte (m)</label><input type="number" value="'+(n.norte||'')+'" placeholder="ej. 8190000" onchange="setNido('+i+',\'norte\',this.value)"></div>'
-      +'<div><label>Zona UTM</label><input type="text" value="'+(n.zona||'18S')+'" onchange="setNido('+i+',\'zona\',this.value)"></div>'
+      +'<div><label>Zona UTM</label><input type="text" value="'+(n.zona||'19S')+'" onchange="setNido('+i+',\'zona\',this.value)"></div>'
       +'<div><label>Notas</label><input type="text" value="'+(n.notas||'')+'" onchange="setNido('+i+',\'notas\',this.value)"></div>'
       +'</div>';
     list.appendChild(div);
   });
 }
-function addNido()            { state.nidos.push({punto:'',especie:'',este:'',norte:'',zona:'18S',notas:''}); renderNidos(); autosave(); }
+function addNido()            { state.nidos.push({punto:'',especie:'',este:'',norte:'',zona:'19S',notas:''}); renderNidos(); autosave(); }
 function removeNido(i)        { state.nidos.splice(i,1); renderNidos(); autosave(); }
 function setNido(i,key,val)   { state.nidos[i][key]=val; autosave(); }
 
 // ══════════ EXPORT SUMMARY ══════════
 function renderExportSummary() {
-  const totalObs    = state.puntos.reduce((s,p)=>s+p.obs.length,0);
+  const totalIndividuos = state.puntos.reduce((total, punto) => {
+    return total + punto.obs.reduce((subtotal, ob) => {
+      const camposAbundancia = punto.tipo === 'PC'
+        ? ['c1_25', 'c1_50', 'c2_25', 'c2_50', 'asist']
+        : ['tr_25', 'tr_50', 'asist'];
+
+      const individuosFila = camposAbundancia.reduce((suma, campo) => {
+        return suma + (Number(ob[campo]) || 0);
+      }, 0);
+
+      return subtotal + individuosFila;
+    }, 0);
+  }, 0);
+
   const totalPuntos = state.puntos.length;
   const especiesSet = new Set();
-  state.puntos.forEach(p=>p.obs.forEach(ob=>{ if(ob.especie) especiesSet.add(ob.especie); }));
-  const ruta = state.selectedRuta?state.selectedRuta.label:'—';
+
+  state.puntos.forEach(p => {
+    p.obs.forEach(ob => {
+      if (ob.especie) especiesSet.add(ob.especie);
+    });
+  });
+
+  const ruta = state.selectedRuta ? state.selectedRuta.label : '—';
+
   document.getElementById('export-summary').innerHTML =
     '<div class="stat-card"><div class="stat-num">'+totalPuntos+'</div><div class="stat-label">Puntos/Transectos</div></div>'
-    +'<div class="stat-card"><div class="stat-num">'+totalObs+'</div><div class="stat-label">Avistamientos</div></div>'
+    +'<div class="stat-card"><div class="stat-num">'+totalIndividuos+'</div><div class="stat-label">Individuos</div></div>'
     +'<div class="stat-card"><div class="stat-num">'+especiesSet.size+'</div><div class="stat-label">Especies distintas</div></div>'
     +'<div class="stat-card"><div class="stat-num">'+state.nidos.length+'</div><div class="stat-label">Nidos registrados</div></div>'
     +'<div class="stat-card"><div class="stat-num" style="font-size:13px;padding-top:6px">'+ruta+'</div><div class="stat-label">Ruta</div></div>';
