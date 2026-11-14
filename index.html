@@ -334,7 +334,7 @@ const RUTAS = [
     transecto:{ codigo:'ARE-AVE-T1' } },
   { id:'r3b', label:'Ruta 3 — P. Selva Alegre', zona:'Parque', tipo:'PC', codLocalidad:'ARE-SEL',
     pc:{ desde:1, hasta:8, prefijo:'ARE-SEL-PC-' } },
-  { id:'r4a', label:'Ruta 4 — Av. Independencia', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVI',
+  { id:'r4a', label:'Ruta 4 — Av. Goyeneche', localidad:'Av. Goyeneche', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVG',
     transecto:{ codigo:'ARE-AVI-T1' } },
   { id:'r4b', label:'Ruta 4 — Plaza de Armas', zona:'Plaza', tipo:'PC', codLocalidad:'ARE-PLA',
     pc:{ desde:1, hasta:1, prefijo:'ARE-PLA-PC-' } },
@@ -543,7 +543,7 @@ function renderRouteInfo(r) {
   ).join(' ');
   document.getElementById('route-detail').innerHTML =
     '<div class="form-grid">'
-    +'<div><label>Localidad</label><input type="text" value="'+r.zona+'" readonly></div>'
+    +'<div><label>Localidad</label><input type="text" value="'+(r.localidad || r.zona)+'" readonly></div>'
     +'<div><label>Código localidad</label><input type="text" value="'+r.codLocalidad+'" readonly></div>'
     +'</div><div style="margin-top:10px"><label>Puntos / Transectos</label><div style="margin-top:4px">'+pts+'</div></div>';
 }
@@ -938,7 +938,7 @@ function meta() {
     ['MAUP — Monitoreo de Aves Urbanas del Perú'],[' '],
     ['Nombre del monitor:',mon,'','','','','Precipitación (%):',gv('precipitacion'),'','Temperatura (°C):',gv('temperatura')],
     ['Nombres del equipo:',getEquipo(),'','','Ciudad:','Arequipa','Nubosidad (%):',gv('nubosidad')],
-    ['Nombre localidad:',r?r.zona:'','','','Fecha:',gv('fecha'),'Vel. Viento (km/h):',gv('velviento')],
+    ['Nombre localidad:',r?.localidad || r?.zona || '','','','Fecha:',gv('fecha'),'Vel. Viento (km/h):',gv('velviento')],
     ['Tipo de hábitat:',r?r.zona:'','','','Hora inicio:','(ver tabla)','Humedad (%):',gv('humedad')],
     ['Tipo de censo:',r?r.tipo==='PC'?'Punto de conteo':'Transecto':'','','','Hora final:','(ver tabla)','Viento:',gv('viento')],
     [' '],
