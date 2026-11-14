@@ -510,8 +510,7 @@ function selectRuta(r) {
 }
 
 function buildPuntos(r) {
-  countEndTimers.forEach(timer => clearTimeout(timer));
-  countEndTimers.clear();
+  countAlertTimers.forEach((_, pid) => clearCountAlerts(pid));
   state.puntos = [];
   if (r.pc) {
     const desde=r.pc.desde, hasta=r.pc.hasta, step=desde<=hasta?1:-1;
@@ -593,9 +592,9 @@ function showPunto(p) {
 
 function gp(pid) { return state.puntos.find(p=>p.id===pid); }
 
-// ══════════ ALERTA DE FIN DE CONTEO ══════════
+// ══════════ ALERTAS DE CONTEO ══════════
 const COUNT_DURATION_MINUTES = 10;
-const countEndTimers = new Map();
+const countAlertTimers = new Map();
 let countEndAudioContext;
 let countEndAudio;
 
@@ -621,9 +620,13 @@ function prepareCountEndAudio() {
     });
 }
 
-function scheduleCountEndAlert(pid, startTime) {
-  clearTimeout(countEndTimers.get(pid));
-  countEndTimers.delete(pid);
+function clearCountAlerts(pid) {
+  countAlertTimers.get(pid)?.forEach(timer => clearTimeout(timer));
+  countAlertTimers.delete(pid);
+}
+
+function scheduleCountAlerts(pid, startTime) {
+  clearCountAlerts(pid);
   if (!startTime) return;
 
   const [hours, minutes] = startTime.split(':').map(Number);
@@ -639,20 +642,25 @@ function scheduleCountEndAlert(pid, startTime) {
     start.setDate(start.getDate() - 1);
   }
 
-  const delay = start.getTime() + duration - now.getTime();
-  if (delay <= 0) return;
+  const timers = new Set();
+  for (const offset of [duration / 2, duration]) {
+    const delay = start.getTime() + offset - now.getTime();
+    if (delay <= 0) continue;
 
-  const timer = setTimeout(async () => {
-    const buffer = await countEndAudio;
-    if (countEndTimers.get(pid) !== timer) return;
-    countEndTimers.delete(pid);
-    if (!buffer) return;
-    const sound = countEndAudioContext.createBufferSource();
-    sound.buffer = buffer;
-    sound.connect(countEndAudioContext.destination);
-    sound.start();
-  }, delay);
-  countEndTimers.set(pid, timer);
+    const timer = setTimeout(async () => {
+      const buffer = await countEndAudio;
+      if (countAlertTimers.get(pid) !== timers) return;
+      timers.delete(timer);
+      if (!timers.size) countAlertTimers.delete(pid);
+      if (!buffer) return;
+      const sound = countEndAudioContext.createBufferSource();
+      sound.buffer = buffer;
+      sound.connect(countEndAudioContext.destination);
+      sound.start();
+    }, delay);
+    timers.add(timer);
+  }
+  if (timers.size) countAlertTimers.set(pid, timers);
 }
 
 function saveHoraInicio(pid, val) {
@@ -667,7 +675,7 @@ function saveHoraInicio(pid, val) {
       const hf=document.getElementById('hf-'+pid); if(hf) hf.value=fin;
       prepareCountEndAudio();
     }
-    scheduleCountEndAlert(pid, val);
+    scheduleCountAlerts(pid, val);
   }
   autosave();
 }
