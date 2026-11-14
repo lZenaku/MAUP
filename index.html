@@ -335,7 +335,7 @@ const RUTAS = [
   { id:'r3b', label:'Ruta 3 — P. Selva Alegre', zona:'Parque', tipo:'PC', codLocalidad:'ARE-SEL',
     pc:{ desde:1, hasta:8, prefijo:'ARE-SEL-PC-' } },
   { id:'r4a', label:'Ruta 4 — Av. Goyeneche', localidad:'Av. Goyeneche', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVG',
-    transecto:{ codigo:'ARE-AVI-T1' } },
+    transecto:{ codigo:'ARE-AVG-T1' } },
   { id:'r4b', label:'Ruta 4 — Plaza de Armas', zona:'Plaza', tipo:'PC', codLocalidad:'ARE-PLA',
     pc:{ desde:1, hasta:1, prefijo:'ARE-PLA-PC-' } },
 ];
@@ -435,18 +435,26 @@ function loadSave() {
     applyTheme();
     if (s.form) Object.entries(s.form).forEach(([k,v]) => { const el=document.getElementById(k); if(el) el.value=v; });
     if (s.equipo && s.equipo.length) s.equipo.forEach(e => _addEquipoRow(e.id, e.val));
+    state.nidos = s.nidos || [];
     if (s.selectedRutaId) {
       const r = RUTAS.find(r=>r.id===s.selectedRutaId);
       if (r) {
         state.selectedRutaId = r.id;
         state.selectedRuta   = r;
         state.puntos         = s.puntos || [];
+        if (r.id === 'r4a') {
+          for (const p of state.puntos) {
+            if (p.tipo === 'TR' && p.codigo === 'ARE-AVI-T1') p.codigo = r.transecto.codigo;
+          }
+          for (const nido of state.nidos) {
+            if (nido.punto === 'ARE-AVI-T1') nido.punto = r.transecto.codigo;
+          }
+        }
         const rc = document.getElementById('rc-'+r.id);
         if (rc) rc.classList.add('selected');
         renderRouteInfo(r);
       }
     }
-    state.nidos = s.nidos || [];
     const speciesRecords = state.puntos.flatMap(p => p.obs || []).concat(state.nidos);
     for (const record of speciesRecords) {
       if (record.especie === 'TRO AED') record.especie = 'TRO MUS';
