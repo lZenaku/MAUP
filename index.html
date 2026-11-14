@@ -134,6 +134,15 @@ input[readonly] { background: var(--input-readonly); color: var(--muted); }
 .obs-table input, .obs-table select { padding: 4px 5px; font-size: 12px; }
 .table-wrap { overflow-x: auto; }
 
+.species-picker { min-width: 0; }
+.obs-table .species-picker { width: 208px; }
+.species-results { max-height: 152px; overflow-y: auto; margin-top: 4px; border: 1px solid var(--border); border-radius: 5px; background: var(--input-bg); }
+.species-results button { display: block; width: 100%; min-height: 38px; padding: 6px 8px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.species-results button + button { border-top: 1px solid var(--border); }
+.species-results button:hover, .species-results button:focus-visible { background: var(--primary-light); }
+.species-results small { display: block; color: var(--muted); }
+.species-results p { padding: 8px; color: var(--muted); }
+
 .badge       { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 .badge-pc    { background: #d6eaf8; color: #1a5276; }
 .badge-tr    { background: #fef9e7; color: #7d6608; }
@@ -354,7 +363,7 @@ const ESPECIES = [
   ['RHO VES','Rhodopis vesper','Colibrí de Oasis'],['RHO ALA','Rhodopis alaudina','Fringilo de Cola Bandeada'],
   ['RHO FRU','Rhopospina fruticeti','Fringilo de Pecho Negro'],['SIC OLI','Sicalis olivascens','Chirigüe Verdoso'],
   ['SPI MAG','Spinus magellanicus','Jilguero Encapuchado'],['SYS LON','Systellura longirostris','Chotacabras de Ala Bandeada'],
-  ['THA COR','Thaumastura cora','Colibrí de Cora'],['TRO AED','Troglodytes aedon','Cucarachero Común'],
+  ['THA COR','Thaumastura cora','Colibrí de Cora'],['TRO MUS','Troglodytes musculus','Cucarachero Común'],
   ['TUR CHI','Turdus chiguanco','Zorzal Chiguanco'],['VAN RES','Vanellus resplendens','Avefría Andina'],
   ['ZEN AUR','Zenaida auriculata','Tórtola Orejuda'],['ZEN MEL','Zenaida meloda','Tórtola Melódica'],
   ['ZON CAP','Zonotrichia capensis','Gorrión de Collar Rufo'],
@@ -438,6 +447,10 @@ function loadSave() {
       }
     }
     state.nidos = s.nidos || [];
+    const speciesRecords = state.puntos.flatMap(p => p.obs || []).concat(state.nidos);
+    for (const record of speciesRecords) {
+      if (record.especie === 'TRO AED') record.especie = 'TRO MUS';
+    }
     goStep(s.currentStep||0);
     return true;
   } catch(e) { return false; }
@@ -697,9 +710,95 @@ function renderObsTable(pid, showAsist) {
   p.obs.forEach((_,idx)=>renderObsRow(pid,idx,showAsist));
 }
 
+function createSpeciesPicker(id, selectedCode, onSelect, emptyLabel) {
+  const picker = document.createElement('div');
+  picker.className = 'species-picker';
+  const input = document.createElement('input');
+  input.type = 'search';
+  input.id = id;
+  input.placeholder = 'Buscar nombre científico';
+  input.autocomplete = 'off';
+  input.autocapitalize = 'none';
+  input.spellcheck = false;
+  input.setAttribute('aria-label', 'Buscar especie por nombre científico');
+
+  const results = document.createElement('div');
+  results.className = 'species-results';
+  results.id = id + '-results';
+  input.setAttribute('aria-controls', results.id);
+  picker.append(input, results);
+
+  function closeResults() {
+    input.value = ESPECIES.find(([code]) => code === selectedCode)?.[1] || '';
+    results.hidden = true;
+  }
+
+  function addResult(code, name) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = name;
+    if (code) {
+      const label = document.createElement('small');
+      label.textContent = code;
+      button.appendChild(label);
+    }
+    button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('click', () => {
+      selectedCode = code;
+      onSelect(code);
+      if (document.activeElement !== input) input.focus({ preventScroll: true });
+      closeResults();
+    });
+    results.appendChild(button);
+  }
+
+  function showResults() {
+    const query = input.value.trim().toLowerCase().replace(/\s+/g, ' ');
+    results.replaceChildren();
+    for (const [code, name] of ESPECIES) {
+      if (name.toLowerCase().includes(query)) addResult(code, name);
+    }
+    if (!results.childElementCount) {
+      const message = document.createElement('p');
+      message.setAttribute('role', 'status');
+      message.textContent = 'Sin coincidencias';
+      results.appendChild(message);
+    }
+    if (selectedCode) addResult('', emptyLabel);
+    results.hidden = false;
+  }
+
+  input.addEventListener('focus', () => {
+    input.select();
+    showResults();
+  });
+  input.addEventListener('click', () => {
+    if (results.hidden) showResults();
+  });
+  input.addEventListener('input', showResults);
+  picker.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !results.hidden) {
+      event.preventDefault();
+      input.focus({ preventScroll: true });
+      closeResults();
+    }
+    if (event.target === input && !results.hidden && (event.key === 'ArrowDown' || event.key === 'Enter')) {
+      event.preventDefault();
+      const firstResult = results.querySelector('button');
+      if (!firstResult || firstResult.textContent === emptyLabel) return;
+      if (event.key === 'Enter') firstResult.click();
+      else firstResult.focus();
+    }
+  });
+  picker.addEventListener('focusout', event => {
+    if (!picker.contains(event.relatedTarget)) closeResults();
+  });
+  closeResults();
+  return picker;
+}
+
 function renderObsRow(pid, idx, showAsist) {
   const p=gp(pid); const ob=p.obs[idx]; const isPC=p.tipo==='PC';
-  const eOpts = ESPECIES.map(e=>'<option value="'+e[0]+'" '+(ob.especie===e[0]?'selected':'')+'>'+e[0]+' — '+e[2]+'</option>').join('');
   const idOpts = IDENTIFICACION.map(i=>'<option '+(ob.identificacion===i?'selected':'')+'>'+i+'</option>').join('');
   const cOpts  = COMPORTAMIENTO.map(c=>'<option '+(ob.comportamiento===c?'selected':'')+'>'+c+'</option>').join('');
   const aOpts  = ALTURA_FORRAJEO.map(a=>'<option '+(ob.altForrajeo===a?'selected':'')+'>'+a+'</option>').join('');
@@ -714,13 +813,16 @@ function renderObsRow(pid, idx, showAsist) {
     ? '<td><input type="number" min="0" style="width:44px" value="'+(ob.asist||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'asist\',this.value)"></td>' : '';
   const tr=document.createElement('tr');
   tr.innerHTML='<td style="font-weight:700;color:var(--muted);text-align:center">'+(idx+1)+'</td>'
-    +'<td><select style="width:182px" onchange="setOb(\''+pid+'\','+idx+',\'especie\',this.value)"><option value="">— Especie —</option>'+eOpts+'</select></td>'
+    +'<td class="species-cell"></td>'
     +'<td><select style="width:90px" onchange="setOb(\''+pid+'\','+idx+',\'identificacion\',this.value)">'+idOpts+'</select></td>'
     +'<td><select style="width:168px" onchange="setOb(\''+pid+'\','+idx+',\'comportamiento\',this.value)"><option value="">—</option>'+cOpts+'</select></td>'
     +'<td><select style="width:142px" onchange="setOb(\''+pid+'\','+idx+',\'altForrajeo\',this.value)"><option value="">—</option>'+aOpts+'</select></td>'
     +'<td><input type="number" min="0" style="width:54px" value="'+(ob.distObs||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'distObs\',this.value)"></td>'
     +pcCells+asistCell
     +'<td><button class="btn btn-danger btn-sm" onclick="removeObs(\''+pid+'\','+idx+')">✕</button></td>';
+  tr.querySelector('.species-cell').appendChild(createSpeciesPicker(
+    'species-'+pid+'-'+idx, ob.especie, code => setOb(pid, idx, 'especie', code), 'Quitar especie'
+  ));
   document.getElementById('obs-body-'+pid).appendChild(tr);
 }
 
@@ -772,13 +874,15 @@ function renderNidos() {
       +'<button class="btn btn-danger btn-sm" onclick="removeNido('+i+')">Eliminar</button></div>'
       +'<div class="form-grid">'
       +'<div><label>Punto/Transecto</label><select onchange="setNido('+i+',\'punto\',this.value)"><option value="">—</option>'+ptOpts+'</select></div>'
-      +'<div><label>Especie (si conocida)</label><select onchange="setNido('+i+',\'especie\',this.value)"><option value="">Desconocida</option>'
-        +ESPECIES.map(e=>'<option value="'+e[0]+'" '+(n.especie===e[0]?'selected':'')+'>'+e[0]+' — '+e[2]+'</option>').join('')+'</select></div>'
+      +'<div class="species-cell"><label for="species-nido-'+i+'">Especie (si conocida)</label></div>'
       +'<div><label>UTM Este (m)</label><input type="number" value="'+(n.este||'')+'" placeholder="ej. 234567" onchange="setNido('+i+',\'este\',this.value)"></div>'
       +'<div><label>UTM Norte (m)</label><input type="number" value="'+(n.norte||'')+'" placeholder="ej. 8190000" onchange="setNido('+i+',\'norte\',this.value)"></div>'
       +'<div><label>Zona UTM</label><input type="text" value="'+(n.zona||'19S')+'" onchange="setNido('+i+',\'zona\',this.value)"></div>'
       +'<div><label>Notas</label><input type="text" value="'+(n.notas||'')+'" onchange="setNido('+i+',\'notas\',this.value)"></div>'
       +'</div>';
+    div.querySelector('.species-cell').appendChild(createSpeciesPicker(
+      'species-nido-'+i, n.especie, code => setNido(i, 'especie', code), 'Desconocida'
+    ));
     list.appendChild(div);
   });
 }
