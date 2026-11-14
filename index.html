@@ -329,7 +329,18 @@ const RUTAS = [
   { id:'r1',  label:'Ruta 1 — Campus', zona:'Campus Ingenierías y Biomédicas de la UNSA', tipo:'PC', codLocalidad:'ARE-CAMP-UNSA',
     pc:{ desde:1, hasta:11, prefijo:'ARE-CAM-UNSA-PC-' } },
   { id:'r2',  label:'Ruta 2 — Vallecito', zona:'Monte Ribereño y Avenida', tipo:'PC', codLocalidad:'ARE-VAL',
-    pc:{ desde:10, hasta:1, prefijo:'ARE-VAL-PC-' } },
+    pc:{ desde:10, hasta:1, prefijo:'ARE-VAL-PC-', maps:{
+      'pc-10':'https://maps.app.goo.gl/K3uSRSf5mANjtj8V7',
+      'pc-9':'https://maps.app.goo.gl/MbKbLA6cx1CeXNeX7',
+      'pc-8':'https://maps.app.goo.gl/pB5Yx1mGdorgB85e9',
+      'pc-7':'https://maps.app.goo.gl/x4ybWf6PhHsBxBgg8',
+      'pc-6':'https://maps.app.goo.gl/YPedZr1W6nkXaQee7',
+      'pc-5':'https://maps.app.goo.gl/qgWJEzw1Q1CjHUor7',
+      'pc-4':'https://maps.app.goo.gl/4KzEHGXnwimUbXpY9',
+      'pc-3':'https://maps.app.goo.gl/3RCHsgbDjxeVFgDA9',
+      'pc-2':'https://maps.app.goo.gl/2p8gt77vsQQuxmVj9',
+      'pc-1':'https://maps.app.goo.gl/yzo983cJZGyZ1XLt6'
+    } } },
   { id:'r3a', label:'Ruta 3 — Av. Ejército', zona:'Avenida', tipo:'TR', codLocalidad:'ARE-AVE',
     transecto:{ codigo:'ARE-AVE-T1' } },
   { id:'r3b', label:'Ruta 3 — P. Selva Alegre', zona:'Parque', tipo:'PC', codLocalidad:'ARE-SEL',
@@ -579,6 +590,7 @@ function showPunto(p) {
   const c=document.getElementById('conteo-content');
   c.innerHTML='';
   const isPC=p.tipo==='PC';
+  const mapsUrl = isPC ? state.selectedRuta?.pc?.maps?.[p.id] : null;
   const card=document.createElement('div'); card.className='card';
   card.innerHTML='<div class="card-title">'+(isPC?'🔵 Punto de Conteo':'🟡 Transecto')+': '+p.codigo+'</div>'
     +'<div class="form-grid">'
@@ -586,6 +598,16 @@ function showPunto(p) {
     +'<div><label>Hora fin</label><input type="time" id="hf-'+p.id+'" value="'+(p.horaFin||'')+'" '+(isPC?'readonly':'')+' onchange="saveHoraFin(\''+p.id+'\',this.value)"></div>'
     +'</div>'
     +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px">PC: Se realizan 2 intervalos de 5 min. Las columnas <strong>sombreadas en verde oscuro = intervalo 1 (0–5 min)</strong>. Sin sombra = intervalo 2 (5–10 min). La hora fin se calcula automáticamente.</div>':'');
+  if (mapsUrl) {
+    const mapsLink = document.createElement('a');
+    mapsLink.className = 'btn btn-outline';
+    mapsLink.href = mapsUrl;
+    mapsLink.target = '_blank';
+    mapsLink.rel = 'noopener noreferrer';
+    mapsLink.textContent = 'Abrir en Google Maps';
+    mapsLink.style.textDecoration = 'none';
+    card.appendChild(mapsLink);
+  }
   c.appendChild(card);
   if (isPC) {
     const startInput = document.getElementById('hi-'+p.id);
