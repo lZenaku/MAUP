@@ -503,12 +503,15 @@ function selectRuta(r) {
   document.getElementById('rc-'+r.id).classList.add('selected');
   state.selectedRutaId = r.id;
   state.selectedRuta   = r;
+  if (r.pc) prepareCountEndAudio();
   buildPuntos(r);
   renderRouteInfo(r);
   autosave();
 }
 
 function buildPuntos(r) {
+  countEndTimers.forEach(timer => clearTimeout(timer));
+  countEndTimers.clear();
   state.puntos = [];
   if (r.pc) {
     const desde=r.pc.desde, hasta=r.pc.hasta, step=desde<=hasta?1:-1;
@@ -564,6 +567,12 @@ function showPunto(p) {
     +'</div>'
     +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px">PC: Se realizan 2 intervalos de 5 min. Las columnas <strong>sombreadas en verde oscuro = intervalo 1 (0–5 min)</strong>. Sin sombra = intervalo 2 (5–10 min). La hora fin se calcula automáticamente.</div>':'');
   c.appendChild(card);
+  if (isPC) {
+    const startInput = document.getElementById('hi-'+p.id);
+    startInput.addEventListener('click', prepareCountEndAudio);
+    startInput.addEventListener('pointerup', prepareCountEndAudio);
+    startInput.addEventListener('keydown', prepareCountEndAudio);
+  }
 
   const ctrl=document.createElement('div');
   ctrl.style.cssText='margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
@@ -584,15 +593,81 @@ function showPunto(p) {
 
 function gp(pid) { return state.puntos.find(p=>p.id===pid); }
 
+// ══════════ ALERTA DE FIN DE CONTEO ══════════
+const COUNT_DURATION_MINUTES = 10;
+const countEndTimers = new Map();
+let countEndAudioContext;
+let countEndAudio;
+
+function prepareCountEndAudio() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  // El navegador permite habilitar el audio durante una interacción.
+  countEndAudioContext ||= new AudioContextClass();
+  if (countEndAudioContext.state !== 'running') {
+    countEndAudioContext.resume().catch(console.warn);
+  }
+  countEndAudio ||= fetch('alerta_web_puntos_conteo.mp3')
+    .then(response => {
+      if (!response.ok) throw new Error('No se pudo cargar el audio de fin de conteo.');
+      return response.arrayBuffer();
+    })
+    .then(bytes => countEndAudioContext.decodeAudioData(bytes))
+    .catch(error => {
+      countEndAudio = undefined;
+      console.warn(error);
+      return null;
+    });
+}
+
+function scheduleCountEndAlert(pid, startTime) {
+  clearTimeout(countEndTimers.get(pid));
+  countEndTimers.delete(pid);
+  if (!startTime) return;
+
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(hours, minutes, 0, 0);
+  const duration = COUNT_DURATION_MINUTES * 60 * 1000;
+
+  // Un inicio justo antes de medianoche puede corresponder al día anterior.
+  const previousStart = new Date(start);
+  previousStart.setDate(previousStart.getDate() - 1);
+  if (previousStart.getTime() + duration > now.getTime()) {
+    start.setDate(start.getDate() - 1);
+  }
+
+  const delay = start.getTime() + duration - now.getTime();
+  if (delay <= 0) return;
+
+  const timer = setTimeout(async () => {
+    const buffer = await countEndAudio;
+    if (countEndTimers.get(pid) !== timer) return;
+    countEndTimers.delete(pid);
+    if (!buffer) return;
+    const sound = countEndAudioContext.createBufferSource();
+    sound.buffer = buffer;
+    sound.connect(countEndAudioContext.destination);
+    sound.start();
+  }, delay);
+  countEndTimers.set(pid, timer);
+}
+
 function saveHoraInicio(pid, val) {
   const p=gp(pid); if(!p) return;
   p.horaInicio=val;
-  if (p.tipo==='PC' && val) {
-    const [h,m]=val.split(':').map(Number);
-    const tot=h*60+m+10;
-    const fin=String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
-    p.horaFin=fin;
-    const hf=document.getElementById('hf-'+pid); if(hf) hf.value=fin;
+  if (p.tipo==='PC') {
+    if (val) {
+      const [h,m]=val.split(':').map(Number);
+      const tot=h*60+m+COUNT_DURATION_MINUTES;
+      const fin=String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+      p.horaFin=fin;
+      const hf=document.getElementById('hf-'+pid); if(hf) hf.value=fin;
+      prepareCountEndAudio();
+    }
+    scheduleCountEndAlert(pid, val);
   }
   autosave();
 }
