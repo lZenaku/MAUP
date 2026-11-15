@@ -259,6 +259,7 @@ input::placeholder { color: var(--muted); opacity: .86; }
 .obs-table td:first-child { padding-inline: 9px; }
 .obs-table input, .obs-table select { min-height: 40px; padding: 6px 7px; font-size: 13px; }
 .obs-table .obs-number { color: var(--muted); font-weight: 700; text-align: center; }
+.obs-toggle { display: none; }
 .obs-empty { padding: 17px; border: 1px dashed var(--border); border-radius: 12px; background: var(--card); color: var(--muted); font-size: 14px; }
 #conteo-content:has(.obs-empty) { display: flex; flex-direction: column; }
 #conteo-content:has(.obs-empty) .obs-table-container { order: 1; }
@@ -332,13 +333,32 @@ input::placeholder { color: var(--muted); opacity: .86; }
   .observation-list tbody tr { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 11px; padding: 13px; border: 1px solid var(--border); border-radius: 13px; background: var(--card); box-shadow: var(--shadow); }
   .observation-list td { display: block; min-width: 0; padding: 0; border: 0; }
   .observation-list td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 700; }
-  .observation-list .obs-number { grid-column: 1 / -1; padding: 4px 42px 6px 0; text-align: left; font-size: 14px; }
-  .observation-list .obs-number::before { content: "Avistamiento "; }
+  .observation-list .obs-number { grid-column: 1 / -1; padding: 0 48px 0 0; text-align: left; font-size: 14px; }
+  .observation-list .obs-index { display: none; }
+  .observation-list .obs-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--input-readonly);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .obs-toggle:hover { background: var(--primary-light); }
+  .obs-toggle::after { content: ""; width: 8px; height: 8px; flex: 0 0 8px; border-right: 2px solid var(--primary); border-bottom: 2px solid var(--primary); transform: rotate(45deg); }
+  .obs-toggle[aria-expanded="false"]::after { transform: rotate(-45deg); }
+  .observation-list .obs-collapsed > td:not(.obs-number):not(.obs-delete) { display: none; }
   .observation-list .species-cell { grid-column: span 2; }
   .observation-list .species-picker, .observation-list input, .observation-list select { width: 100% !important; }
   .observation-list td.col-shaded, .observation-list td.obs-period-two { padding: 7px; border-radius: 9px; }
   .observation-list td.obs-period-two { background: var(--input-readonly); }
-  .observation-list .obs-delete { position: absolute; top: 10px; right: 11px; }
+  .observation-list .obs-delete { position: absolute; top: 13px; right: 13px; }
   .observation-list .obs-delete button { min-width: 34px; min-height: 34px; }
 }
 
@@ -1147,6 +1167,8 @@ function createSpeciesPicker(id, selectedCode, onSelect, emptyLabel) {
   return picker;
 }
 
+const collapsedObservations = new WeakSet();
+
 function renderObsRow(pid, idx, showAsist) {
   const p=gp(pid); const ob=p.obs[idx]; const isPC=p.tipo==='PC';
   const idOpts = IDENTIFICACION.map(i=>'<option '+(ob.identificacion===i?'selected':'')+'>'+i+'</option>').join('');
@@ -1162,7 +1184,8 @@ function renderObsRow(pid, idx, showAsist) {
   const asistCell = showAsist
     ? '<td data-label="Asistemático"><input aria-label="Asistemático" type="number" min="0" style="width:44px" value="'+(ob.asist||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'asist\',this.value)"></td>' : '';
   const tr=document.createElement('tr');
-  tr.innerHTML='<td class="obs-number">'+(idx+1)+'</td>'
+  tr.innerHTML='<td class="obs-number"><span class="obs-index">'+(idx+1)+'</span>'
+    +'<button type="button" class="obs-toggle"></button></td>'
     +'<td class="species-cell" data-label="Especie"></td>'
     +'<td data-label="Identificación"><select aria-label="Identificación" style="width:104px" onchange="setOb(\''+pid+'\','+idx+',\'identificacion\',this.value)">'+idOpts+'</select></td>'
     +'<td data-label="Comportamiento"><select aria-label="Comportamiento" style="width:144px" onchange="setOb(\''+pid+'\','+idx+',\'comportamiento\',this.value)"><option value="">—</option>'+cOpts+'</select></td>'
@@ -1170,8 +1193,33 @@ function renderObsRow(pid, idx, showAsist) {
     +'<td data-label="Dist. al observador (m)"><input aria-label="Dist. al observador (m)" type="number" min="0" style="width:54px" value="'+(ob.distObs||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'distObs\',this.value)"></td>'
     +pcCells+asistCell
     +'<td class="obs-delete"><button class="btn btn-danger btn-sm icon-button" aria-label="Eliminar avistamiento" onclick="removeObs(\''+pid+'\','+idx+')">✕</button></td>';
+  const toggle = tr.querySelector('.obs-toggle');
+  const fieldIds = Array.from(tr.cells).slice(1, -1).map((cell, i) => {
+    cell.id = 'obs-field-'+pid+'-'+idx+'-'+i;
+    return cell.id;
+  });
+  toggle.setAttribute('aria-controls', fieldIds.join(' '));
+  const updateHeading = code => {
+    toggle.textContent = 'Avistamiento '+(idx+1)+(code ? ': '+code : '');
+  };
+  const updateExpanded = () => {
+    const collapsed = collapsedObservations.has(ob);
+    tr.classList.toggle('obs-collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+  };
+  updateHeading(ob.especie);
+  updateExpanded();
+  toggle.addEventListener('click', () => {
+    if (collapsedObservations.has(ob)) collapsedObservations.delete(ob);
+    else collapsedObservations.add(ob);
+    updateExpanded();
+  });
+
   tr.querySelector('.species-cell').appendChild(createSpeciesPicker(
-    'species-'+pid+'-'+idx, ob.especie, code => setOb(pid, idx, 'especie', code), 'Quitar especie'
+    'species-'+pid+'-'+idx, ob.especie, code => {
+      setOb(pid, idx, 'especie', code);
+      updateHeading(code);
+    }, 'Quitar especie'
   ));
   document.getElementById('obs-body-'+pid).appendChild(tr);
 }
