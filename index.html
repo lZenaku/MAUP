@@ -1263,7 +1263,7 @@ function renderPresion() {
     const card = document.createElement(isPC ? 'details' : 'div');
     card.className = 'card';
     if (isPC) {
-      card.open = pressureCardsByPoint.get(p)?.open ?? true;
+      card.open = pressureCardsByPoint.get(p)?.open ?? false;
       pressureCardsByPoint.set(p, card);
     }
     card.innerHTML=(isPC
