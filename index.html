@@ -218,6 +218,13 @@ button, input, select, textarea { font: inherit; }
 .card-title::before { content: ""; flex: 0 0 4px; height: 17px; border-radius: 4px; background: var(--primary-mid); }
 .card-title:has(.badge)::before { display: none; }
 .card-title .badge { flex-shrink: 0; }
+.pressure-toggle { min-height: 44px; margin-bottom: 0; padding: 7px 12px; border-radius: 8px; background: var(--input-readonly); cursor: pointer; list-style: none; }
+.pressure-toggle::-webkit-details-marker { display: none; }
+.pressure-toggle:hover { background: var(--primary-light); }
+.pressure-toggle:focus-visible { outline: 2px solid var(--primary-mid); outline-offset: 3px; }
+.pressure-toggle::after { content: ""; width: 8px; height: 8px; flex: 0 0 8px; margin-left: auto; border-right: 2px solid var(--primary); border-bottom: 2px solid var(--primary); transform: rotate(-45deg); }
+details[open] > .pressure-toggle { margin-bottom: 14px; }
+details[open] > .pressure-toggle::after { transform: rotate(45deg); }
 .count-card { padding-block: 19px; }
 .count-card input[type="time"] { font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; }
 
@@ -1245,12 +1252,23 @@ function removeObs(pid, idx) {
 }
 
 // ══════════ PRESIÓN ══════════
+const pressureCardsByPoint = new WeakMap();
+
 function renderPresion() {
   const c=document.getElementById('presion-content'); c.innerHTML='';
   if (!state.selectedRuta||!state.puntos.length) { c.innerHTML='<div class="alert alert-warning">Selecciona una ruta primero.</div>'; return; }
   state.puntos.forEach(p=>{
-    const pr=p.presion; const div=document.createElement('div'); div.className='card';
-    div.innerHTML='<div class="card-title">'+p.codigo+'</div>'
+    const pr = p.presion;
+    const isPC = p.tipo === 'PC';
+    const card = document.createElement(isPC ? 'details' : 'div');
+    card.className = 'card';
+    if (isPC) {
+      card.open = pressureCardsByPoint.get(p)?.open ?? true;
+      pressureCardsByPoint.set(p, card);
+    }
+    card.innerHTML=(isPC
+      ? '<summary class="card-title pressure-toggle">'+p.codigo+'</summary>'
+      : '<div class="card-title">'+p.codigo+'</div>')
       +'<div class="form-grid-4">'
       +'<div><label># Personas</label><input type="number" min="0" value="'+pr.personas+'" onchange="setPr(\''+p.id+'\',\'personas\',this.value)"></div>'
       +'<div><label># Automóviles</label><input type="number" min="0" value="'+pr.autos+'" onchange="setPr(\''+p.id+'\',\'autos\',this.value)"></div>'
@@ -1261,7 +1279,7 @@ function renderPresion() {
         +'<option '+(pr.nidos==='Sí'?'selected':'')+'>Sí</option></select></div>'
       +'<div class="full"><label>Fenología</label><input type="text" value="'+pr.fenologia+'" placeholder="Ej: floración, fructificación..." onchange="setPr(\''+p.id+'\',\'fenologia\',this.value)"></div>'
       +'</div>';
-    c.appendChild(div);
+    c.appendChild(card);
   });
 }
 function setPr(pid, key, val) { const p=gp(pid); if(p){ p.presion[key]=val; autosave(); } }
