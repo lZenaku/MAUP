@@ -250,6 +250,7 @@ input::placeholder { color: var(--muted); opacity: .86; }
 .obs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .obs-table th { padding: 10px 7px; background: #205640; color: #fff; text-align: left; white-space: nowrap; font-size: 11px; }
 .observation-list th { white-space: normal; }
+.observation-list input[data-count-interval]:disabled { background: var(--input-readonly); color: var(--muted); opacity: .72; cursor: not-allowed; }
 .obs-table th.col-shaded { background: var(--th-shaded); }
 .obs-table td { padding: 7px 5px; vertical-align: top; background: var(--card); border-bottom: 1px solid var(--border); }
 .obs-table tr:last-child td { border-bottom: 0; }
@@ -722,6 +723,7 @@ function goStep(n) {
   document.getElementById('btn-prev').style.display = n===0?'none':'';
   document.getElementById('btn-next').style.display = n===6?'none':'';
   if (n===3) renderConteo();
+  else clearTimeout(countIntervalTimer);
   if (n===4) renderPresion();
   if (n===5) renderNidos();
   if (n===6) renderExportSummary();
@@ -838,7 +840,7 @@ function showPunto(p) {
     +'<div><label>Hora inicio</label><input type="time" id="hi-'+p.id+'" value="'+(p.horaInicio||'')+'" onchange="saveHoraInicio(\''+p.id+'\',this.value)"></div>'
     +'<div><label>Hora fin</label><input type="time" id="hf-'+p.id+'" value="'+(p.horaFin||'')+'" '+(isPC?'readonly':'')+' onchange="saveHoraFin(\''+p.id+'\',this.value)"></div>'
     +'</div>'
-    +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px">Registra por separado los intervalos <strong>0–5 min</strong> y <strong>5–10 min</strong>. La hora de fin se calcula automáticamente.</div>':'');
+    +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px" id="count-intervals-'+p.id+'" role="status"></div>':'');
   if (mapsUrl) {
     const mapsLink = document.createElement('a');
     mapsLink.className = 'btn btn-outline';
@@ -877,8 +879,80 @@ function showPunto(p) {
 
 function gp(pid) { return state.puntos.find(p=>p.id===pid); }
 
-// ══════════ ALERTAS DE CONTEO ══════════
+// ══════════ TIEMPOS DE CONTEO ══════════
 const COUNT_DURATION_MINUTES = 10;
+const COUNT_DURATION_MS = COUNT_DURATION_MINUTES * 60_000;
+const COUNT_MIDPOINT_MS = COUNT_DURATION_MS / 2;
+const COUNT_FIRST_GRACE_MS = 30_000;
+let countIntervalTimer;
+
+function resolveCountStart(startTime, now) {
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const start = new Date(now);
+  start.setHours(hours, minutes, 0, 0);
+
+  // Un inicio justo antes de medianoche puede corresponder al día anterior.
+  const previousStart = new Date(start);
+  previousStart.setDate(previousStart.getDate() - 1);
+  if (previousStart.getTime() + COUNT_DURATION_MS > now.getTime()) {
+    return previousStart.getTime();
+  }
+  return start.getTime();
+}
+
+function refreshCountIntervals(pid) {
+  clearTimeout(countIntervalTimer);
+  const status = document.getElementById('count-intervals-'+pid);
+  const wrap = document.getElementById('tw-'+pid);
+  const p = gp(pid);
+  if (state.currentStep !== 3 || !status || !wrap || !p) return;
+
+  let firstEnabled = false;
+  let secondEnabled = false;
+  let nextChange;
+  let message = 'Ingresa la hora de inicio para habilitar los intervalos.';
+  const now = new Date();
+
+  if (p.horaInicio) {
+    // Los borradores anteriores guardaban la fecha de la sesión y la hora por separado.
+    const savedStart = new Date(gv('fecha') + 'T' + p.horaInicio).getTime();
+    const start = p.countStartAt ?? (Number.isFinite(savedStart) ? savedStart : resolveCountStart(p.horaInicio, now));
+    const midpoint = start + COUNT_MIDPOINT_MS;
+    const firstClose = midpoint + COUNT_FIRST_GRACE_MS;
+    const end = start + COUNT_DURATION_MS;
+    const current = now.getTime();
+
+    if (current < start) {
+      message = 'Los intervalos se habilitarán al comenzar el conteo.';
+      nextChange = start;
+    } else if (current < midpoint) {
+      firstEnabled = true;
+      message = 'Intervalo 0–5 min habilitado. El siguiente se abre al minuto 5.';
+      nextChange = midpoint;
+    } else if (current < firstClose) {
+      firstEnabled = secondEnabled = true;
+      message = 'Ambos intervalos habilitados. El primero cierra 30 segundos después del minuto 5.';
+      nextChange = firstClose;
+    } else if (current < end) {
+      secondEnabled = true;
+      message = 'Intervalo 5–10 min habilitado. Podrás corregir ambos al terminar.';
+      nextChange = end;
+    } else {
+      firstEnabled = secondEnabled = true;
+      message = 'Conteo terminado. Puedes corregir ambos intervalos.';
+    }
+  }
+
+  for (const input of wrap.querySelectorAll('[data-count-interval]')) {
+    input.disabled = input.dataset.countInterval === 'first' ? !firstEnabled : !secondEnabled;
+  }
+  if (status.textContent !== message) status.textContent = message;
+  if (nextChange !== undefined) {
+    countIntervalTimer = setTimeout(() => refreshCountIntervals(pid), Math.min(nextChange - now.getTime(), 60_000));
+  }
+}
+
+// ══════════ ALERTAS DE CONTEO ══════════
 const countAlertTimers = new Map();
 let countEndAudioContext;
 let countEndAudio;
@@ -910,26 +984,14 @@ function clearCountAlerts(pid) {
   countAlertTimers.delete(pid);
 }
 
-function scheduleCountAlerts(pid, startTime) {
+function scheduleCountAlerts(pid, start) {
   clearCountAlerts(pid);
-  if (!startTime) return;
+  if (start == null) return;
 
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const now = new Date();
-  const start = new Date(now);
-  start.setHours(hours, minutes, 0, 0);
-  const duration = COUNT_DURATION_MINUTES * 60 * 1000;
-
-  // Un inicio justo antes de medianoche puede corresponder al día anterior.
-  const previousStart = new Date(start);
-  previousStart.setDate(previousStart.getDate() - 1);
-  if (previousStart.getTime() + duration > now.getTime()) {
-    start.setDate(start.getDate() - 1);
-  }
-
+  const now = new Date().getTime();
   const timers = new Set();
-  for (const offset of [duration / 2, duration]) {
-    const delay = start.getTime() + offset - now.getTime();
+  for (const offset of [COUNT_MIDPOINT_MS, COUNT_DURATION_MS]) {
+    const delay = start + offset - now;
     if (delay <= 0) continue;
 
     const timer = setTimeout(async () => {
@@ -952,15 +1014,17 @@ function saveHoraInicio(pid, val) {
   const p=gp(pid); if(!p) return;
   p.horaInicio=val;
   if (p.tipo==='PC') {
+    p.countStartAt = val ? resolveCountStart(val, new Date()) : null;
+    p.horaFin = '';
     if (val) {
       const [h,m]=val.split(':').map(Number);
       const tot=h*60+m+COUNT_DURATION_MINUTES;
-      const fin=String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
-      p.horaFin=fin;
-      const hf=document.getElementById('hf-'+pid); if(hf) hf.value=fin;
+      p.horaFin=String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
       prepareCountEndAudio();
     }
-    scheduleCountAlerts(pid, val);
+    const hf=document.getElementById('hf-'+pid); if(hf) hf.value=p.horaFin;
+    scheduleCountAlerts(pid, p.countStartAt);
+    refreshCountIntervals(pid);
   }
   autosave();
 }
@@ -976,6 +1040,7 @@ function renderObsTable(pid, showAsist) {
   const asistCol = showAsist?'<th>Asistemático</th>':'';
   if (!p.obs.length) {
     wrap.innerHTML = '<p class="obs-empty">Aún no hay avistamientos en este '+(isPC?'punto':'transecto')+'.</p>';
+    refreshCountIntervals(pid);
     return;
   }
   wrap.innerHTML='<div class="table-wrap observation-list"><table class="obs-table"><thead><tr>'
@@ -984,6 +1049,7 @@ function renderObsTable(pid, showAsist) {
     +pcCols+asistCol+'<th>Eliminar</th>'
     +'</tr></thead><tbody id="obs-body-'+pid+'"></tbody></table></div>';
   p.obs.forEach((_,idx)=>renderObsRow(pid,idx,showAsist));
+  refreshCountIntervals(pid);
 }
 
 function createSpeciesPicker(id, selectedCode, onSelect, emptyLabel) {
@@ -1079,10 +1145,10 @@ function renderObsRow(pid, idx, showAsist) {
   const cOpts  = COMPORTAMIENTO.map(c=>'<option '+(ob.comportamiento===c?'selected':'')+'>'+c+'</option>').join('');
   const aOpts  = ALTURA_FORRAJEO.map(a=>'<option '+(ob.altForrajeo===a?'selected':'')+'>'+a+'</option>').join('');
   const pcCells = isPC
-    ? '<td class="col-shaded" data-label="0–5 min · &lt;25 m"><input aria-label="0–5 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c1_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c1_25\',this.value)"></td>'
-      +'<td class="col-shaded" data-label="0–5 min · 25–50 m"><input aria-label="0–5 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c1_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c1_50\',this.value)"></td>'
-      +'<td class="obs-period-two" data-label="5–10 min · &lt;25 m"><input aria-label="5–10 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c2_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c2_25\',this.value)"></td>'
-      +'<td class="obs-period-two" data-label="5–10 min · 25–50 m"><input aria-label="5–10 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c2_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'c2_50\',this.value)"></td>'
+    ? '<td class="col-shaded" data-label="0–5 min · &lt;25 m"><input data-count-interval="first" aria-label="0–5 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c1_25||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c1_25\',this.value)"></td>'
+      +'<td class="col-shaded" data-label="0–5 min · 25–50 m"><input data-count-interval="first" aria-label="0–5 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c1_50||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c1_50\',this.value)"></td>'
+      +'<td class="obs-period-two" data-label="5–10 min · &lt;25 m"><input data-count-interval="second" aria-label="5–10 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c2_25||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c2_25\',this.value)"></td>'
+      +'<td class="obs-period-two" data-label="5–10 min · 25–50 m"><input data-count-interval="second" aria-label="5–10 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c2_50||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c2_50\',this.value)"></td>'
     : '<td data-label="Abundancia · &lt;25 m"><input aria-label="Abundancia · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.tr_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_25\',this.value)"></td>'
       +'<td data-label="Abundancia · 25–50 m"><input aria-label="Abundancia · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.tr_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_50\',this.value)"></td>';
   const asistCell = showAsist
