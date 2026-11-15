@@ -244,6 +244,7 @@ input::placeholder { color: var(--muted); opacity: .86; }
 .obs-tools { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .obs-tools label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; cursor: pointer; }
 .obs-tools h3 { font: 700 19px/1.25 var(--font-heading); }
+.obs-tools .distance-guide { flex-basis: 100%; }
 .obs-add { display: flex; justify-content: flex-end; margin-top: 12px; }
 
 .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
@@ -863,7 +864,8 @@ function showPunto(p) {
   ctrl.className = 'obs-tools';
   ctrl.innerHTML='<h3>Avistamientos</h3><label>'
     +'<input type="checkbox" id="asist-'+p.id+'" onchange="renderObsTable(\''+p.id+'\',this.checked)"> '
-    +'Mostrar asistemático (fuera de tiempo o &gt;50 m)</label>';
+    +'Mostrar asistemático (fuera de tiempo o &gt;50 m)</label>'
+    +(isPC?'<p class="text-muted distance-guide">En cada avistamiento, usa una sola banda de distancia por intervalo.</p>':'');
   c.appendChild(ctrl);
 
   const tw=document.createElement('div'); tw.id='tw-'+p.id;
@@ -943,8 +945,14 @@ function refreshCountIntervals(pid) {
     }
   }
 
-  for (const input of wrap.querySelectorAll('[data-count-interval]')) {
-    input.disabled = input.dataset.countInterval === 'first' ? !firstEnabled : !secondEnabled;
+  const intervals = [['first', firstEnabled], ['second', secondEnabled]];
+  for (const row of wrap.querySelectorAll('tbody tr')) {
+    for (const [interval, enabled] of intervals) {
+      const [near, far] = row.querySelectorAll('[data-count-interval="'+interval+'"]');
+      // Mantener editables los valores que ya existían en ambos campos de un borrador.
+      near.disabled = !enabled || (near.value === '' && far.value !== '');
+      far.disabled = !enabled || (far.value === '' && near.value !== '');
+    }
   }
   if (status.textContent !== message) status.textContent = message;
   if (nextChange !== undefined) {
@@ -1145,10 +1153,10 @@ function renderObsRow(pid, idx, showAsist) {
   const cOpts  = COMPORTAMIENTO.map(c=>'<option '+(ob.comportamiento===c?'selected':'')+'>'+c+'</option>').join('');
   const aOpts  = ALTURA_FORRAJEO.map(a=>'<option '+(ob.altForrajeo===a?'selected':'')+'>'+a+'</option>').join('');
   const pcCells = isPC
-    ? '<td class="col-shaded" data-label="0–5 min · &lt;25 m"><input data-count-interval="first" aria-label="0–5 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c1_25||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c1_25\',this.value)"></td>'
-      +'<td class="col-shaded" data-label="0–5 min · 25–50 m"><input data-count-interval="first" aria-label="0–5 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c1_50||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c1_50\',this.value)"></td>'
-      +'<td class="obs-period-two" data-label="5–10 min · &lt;25 m"><input data-count-interval="second" aria-label="5–10 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c2_25||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c2_25\',this.value)"></td>'
-      +'<td class="obs-period-two" data-label="5–10 min · 25–50 m"><input data-count-interval="second" aria-label="5–10 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c2_50||'')+'" oninput="setOb(\''+pid+'\','+idx+',\'c2_50\',this.value)"></td>'
+    ? '<td class="col-shaded" data-label="0–5 min · &lt;25 m"><input data-count-interval="first" aria-label="0–5 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c1_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c1_25\',this)"></td>'
+      +'<td class="col-shaded" data-label="0–5 min · 25–50 m"><input data-count-interval="first" aria-label="0–5 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c1_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c1_50\',this)"></td>'
+      +'<td class="obs-period-two" data-label="5–10 min · &lt;25 m"><input data-count-interval="second" aria-label="5–10 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c2_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c2_25\',this)"></td>'
+      +'<td class="obs-period-two" data-label="5–10 min · 25–50 m"><input data-count-interval="second" aria-label="5–10 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c2_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c2_50\',this)"></td>'
     : '<td data-label="Abundancia · &lt;25 m"><input aria-label="Abundancia · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.tr_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_25\',this.value)"></td>'
       +'<td data-label="Abundancia · 25–50 m"><input aria-label="Abundancia · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.tr_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_50\',this.value)"></td>';
   const asistCell = showAsist
@@ -1175,6 +1183,12 @@ function addObs(pid) {
   renderObsTable(pid, document.getElementById('asist-'+pid)?.checked||false);
   autosave();
 }
+function saveCountAbundance(pid, idx, key, input) {
+  if (input.disabled) return;
+  setOb(pid, idx, key, input.value);
+  refreshCountIntervals(pid);
+}
+
 function setOb(pid, idx, key, val) { const p=gp(pid); if(p&&p.obs[idx]){ p.obs[idx][key]=val; autosave(); } }
 function removeObs(pid, idx) {
   const p=gp(pid); p.obs.splice(idx,1);
