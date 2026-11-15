@@ -248,6 +248,9 @@ input::placeholder { color: var(--muted); opacity: .86; }
 .btn-outline:hover { border-color: var(--primary-mid); background: var(--primary-light); }
 .btn-sm { min-height: 40px; padding: 6px 10px; font-size: 13px; }
 .icon-button { min-width: 40px; }
+.nest-location { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.nest-location .btn:disabled { opacity: .68; cursor: wait; }
+.nest-location-status:empty { position: absolute; }
 .obs-tools { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .obs-tools label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; cursor: pointer; }
 .obs-tools h3 { font: 700 19px/1.25 var(--font-heading); }
@@ -1285,6 +1288,127 @@ function renderPresion() {
 function setPr(pid, key, val) { const p=gp(pid); if(p){ p.presion[key]=val; autosave(); } }
 
 // ══════════ NIDOS ══════════
+const nestLocationViews = new WeakMap();
+
+function toUtm(latitude, longitude) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+      latitude < -80 || latitude > 84 || longitude < -180 || longitude > 180) return null;
+
+  let zone = Math.min(60, Math.floor((longitude + 180) / 6) + 1);
+  // Zonas UTM especiales de Noruega y Svalbard.
+  if (latitude >= 56 && latitude < 64 && longitude >= 3 && longitude < 12) zone = 32;
+  if (latitude >= 72 && latitude < 84 && longitude >= 0 && longitude < 42) {
+    zone = 31 + 2 * Math.floor((longitude + 3) / 12);
+  }
+
+  // WGS 84, proyección Transversa de Mercator (EPSG 9807).
+  const radians = Math.PI / 180;
+  const phi = latitude * radians;
+  const deltaLambda = (longitude - (zone * 6 - 183)) * radians;
+  const semiMajorAxis = 6378137;
+  const flattening = 1 / 298.257223563;
+  const eccentricity = Math.sqrt(flattening * (2 - flattening));
+  const n = flattening / (2 - flattening);
+  const n2 = n ** 2;
+  const n3 = n ** 3;
+  const n4 = n ** 4;
+  const radius = semiMajorAxis / (1 + n) * (1 + n2 / 4 + n4 / 64);
+  const coefficients = [
+    n / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180,
+    13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440,
+    61 * n3 / 240 - 103 * n4 / 140,
+    49561 * n4 / 161280
+  ];
+
+  const q = Math.asinh(Math.tan(phi)) - eccentricity * Math.atanh(eccentricity * Math.sin(phi));
+  const beta = Math.atan(Math.sinh(q));
+  const eta0 = Math.atanh(Math.cos(beta) * Math.sin(deltaLambda));
+  const xi0 = Math.asin(Math.sin(beta) * Math.cosh(eta0));
+  let eta = eta0;
+  let xi = xi0;
+  coefficients.forEach((coefficient, index) => {
+    const harmonic = 2 * (index + 1);
+    eta += coefficient * Math.cos(harmonic * xi0) * Math.sinh(harmonic * eta0);
+    xi += coefficient * Math.sin(harmonic * xi0) * Math.cosh(harmonic * eta0);
+  });
+
+  const scale = 0.9996;
+  const south = latitude < 0;
+  return {
+    este: String(Math.round(500000 + scale * radius * eta)),
+    norte: String(Math.round((south ? 10000000 : 0) + scale * radius * xi)),
+    zona: zone + (south ? 'S' : 'N')
+  };
+}
+
+function showNestLocationStatus(view, message, pending = false) {
+  view.message = message;
+  view.pending = pending;
+  view.button.disabled = pending;
+  view.status.textContent = message;
+}
+
+function requestNestLocation(nest, view) {
+  if (view.pending) return;
+  if (!navigator.geolocation) {
+    showNestLocationStatus(view, 'La ubicación no está disponible. Puedes ingresar las coordenadas manualmente.');
+    return;
+  }
+
+  const revision = view.revision;
+  showNestLocationStatus(view, 'Obteniendo la ubicación del dispositivo…', true);
+  navigator.geolocation.getCurrentPosition(({coords}) => {
+    if (!state.nidos.includes(nest)) return;
+    if (revision !== view.revision) {
+      showNestLocationStatus(view, 'Se conservaron las coordenadas ingresadas manualmente.');
+      return;
+    }
+
+    const utm = toUtm(coords.latitude, coords.longitude);
+    if (!utm) {
+      showNestLocationStatus(view, 'La ubicación recibida queda fuera del rango UTM. Puedes ingresar las coordenadas manualmente.');
+      return;
+    }
+
+    Object.assign(nest, utm);
+    for (const field of view.fields) field.value = utm[field.dataset.utmField];
+    const accuracy = Number.isFinite(coords.accuracy)
+      ? ' Precisión estimada: ±'+Math.ceil(coords.accuracy)+' m.'
+      : '';
+    showNestLocationStatus(view, 'Ubicación del dispositivo registrada.'+accuracy);
+    autosave();
+  }, error => {
+    if (!state.nidos.includes(nest)) return;
+    const message = error.code === 1
+      ? 'El navegador no tiene permiso para acceder a la ubicación.'
+      : error.code === 3
+        ? 'Se agotó el tiempo de espera para obtener la ubicación.'
+        : 'El dispositivo no pudo obtener su ubicación.';
+    showNestLocationStatus(view, message+' Puedes ingresar las coordenadas manualmente.');
+  }, {enableHighAccuracy: true, maximumAge: 0, timeout: 15000});
+}
+
+function bindNestLocation(nest, card) {
+  const view = nestLocationViews.get(nest) ?? {pending: false, message: '', revision: 0};
+  view.button = card.querySelector('.nest-location-button');
+  view.status = card.querySelector('.nest-location-status');
+  view.fields = card.querySelectorAll('[data-utm-field]');
+  nestLocationViews.set(nest, view);
+  showNestLocationStatus(view, view.message, view.pending);
+  view.button.addEventListener('click', () => requestNestLocation(nest, view));
+
+  for (const field of view.fields) {
+    const key = field.dataset.utmField;
+    field.value = nest[key] ?? (key === 'zona' ? '19S' : '');
+    field.addEventListener('input', () => {
+      nest[key] = field.value;
+      view.revision++;
+      if (!view.pending && view.message) showNestLocationStatus(view, '');
+      autosave();
+    });
+  }
+}
+
 function renderNidos() {
   const list=document.getElementById('nidos-list'); list.innerHTML='';
   if (!state.nidos.length) { list.innerHTML='<p class="text-muted">No hay nidos registrados.</p>'; return; }
@@ -1297,14 +1421,17 @@ function renderNidos() {
       +'<div class="form-grid">'
       +'<div><label>Punto/Transecto</label><select onchange="setNido('+i+',\'punto\',this.value)"><option value="">—</option>'+ptOpts+'</select></div>'
       +'<div class="species-cell"><label for="species-nido-'+i+'">Especie (si conocida)</label></div>'
-      +'<div><label>UTM Este (m)</label><input type="number" value="'+(n.este||'')+'" placeholder="ej. 234567" onchange="setNido('+i+',\'este\',this.value)"></div>'
-      +'<div><label>UTM Norte (m)</label><input type="number" value="'+(n.norte||'')+'" placeholder="ej. 8190000" onchange="setNido('+i+',\'norte\',this.value)"></div>'
-      +'<div><label>Zona UTM</label><input type="text" value="'+(n.zona||'19S')+'" onchange="setNido('+i+',\'zona\',this.value)"></div>'
+      +'<div class="full nest-location"><button type="button" class="btn btn-outline nest-location-button">Usar mi ubicación</button>'
+      +'<p class="text-muted nest-location-status" role="status"></p></div>'
+      +'<div><label for="nido-este-'+i+'">UTM Este (m)</label><input id="nido-este-'+i+'" data-utm-field="este" type="number" placeholder="ej. 234567"></div>'
+      +'<div><label for="nido-norte-'+i+'">UTM Norte (m)</label><input id="nido-norte-'+i+'" data-utm-field="norte" type="number" placeholder="ej. 8190000"></div>'
+      +'<div><label for="nido-zona-'+i+'">Zona UTM</label><input id="nido-zona-'+i+'" data-utm-field="zona" type="text"></div>'
       +'<div><label>Notas</label><input type="text" value="'+(n.notas||'')+'" onchange="setNido('+i+',\'notas\',this.value)"></div>'
       +'</div>';
     div.querySelector('.species-cell').appendChild(createSpeciesPicker(
       'species-nido-'+i, n.especie, code => setNido(i, 'especie', code), 'Desconocida'
     ));
+    bindNestLocation(n, div);
     list.appendChild(div);
   });
 }
