@@ -227,6 +227,9 @@ details[open] > .pressure-toggle { margin-bottom: 14px; }
 details[open] > .pressure-toggle::after { transform: rotate(45deg); }
 .count-card { padding-block: 19px; }
 .count-card input[type="time"] { font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.start-time-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.start-time-control input { flex: 1 1 160px; }
+.start-time-control button { flex: 0 0 auto; }
 
 .form-grid, .form-grid-3, .form-grid-4 { display: grid; gap: 13px 16px; }
 .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -881,8 +884,10 @@ function showPunto(p) {
   const card=document.createElement('div'); card.className='card count-card';
   card.innerHTML='<div class="card-title"><span class="badge '+(isPC?'badge-pc':'badge-tr')+'">'+(isPC?'Punto de conteo':'Transecto')+'</span> '+p.codigo+'</div>'
     +'<div class="form-grid">'
-    +'<div><label>Hora inicio</label><input type="time" id="hi-'+p.id+'" value="'+(p.horaInicio||'')+'" onchange="saveHoraInicio(\''+p.id+'\',this.value)"></div>'
-    +'<div><label>Hora fin</label><input type="time" id="hf-'+p.id+'" value="'+(p.horaFin||'')+'" '+(isPC?'readonly':'')+' onchange="saveHoraFin(\''+p.id+'\',this.value)"></div>'
+    +'<div><label for="hi-'+p.id+'">Hora inicio</label><div class="start-time-control">'
+    +'<input type="time" step="1" id="hi-'+p.id+'" value="'+withTimeSeconds(p.horaInicio)+'" onchange="saveHoraInicio(\''+p.id+'\',this.value)">'
+    +'<button type="button" class="btn btn-primary" onclick="startCountNow(\''+p.id+'\')">Iniciar</button></div></div>'
+    +'<div><label for="hf-'+p.id+'">Hora fin</label><input type="time" step="1" id="hf-'+p.id+'" value="'+withTimeSeconds(p.horaFin)+'" '+(isPC?'readonly':'')+' onchange="saveHoraFin(\''+p.id+'\',this.value)"></div>'
     +'</div>'
     +(isPC?'<div class="alert alert-info" style="margin-top:10px;font-size:12px" id="count-intervals-'+p.id+'" role="status"></div>':'');
   if (mapsUrl) {
@@ -932,9 +937,9 @@ const COUNT_FIRST_GRACE_MS = 30_000;
 let countIntervalTimer;
 
 function resolveCountStart(startTime, now) {
-  const [hours, minutes] = startTime.split(':').map(Number);
+  const [hours, minutes, seconds = 0] = startTime.split(':').map(Number);
   const start = new Date(now);
-  start.setHours(hours, minutes, 0, 0);
+  start.setHours(hours, minutes, seconds, 0);
 
   // Un inicio justo antes de medianoche puede corresponder al día anterior.
   const previousStart = new Date(start);
@@ -1075,16 +1080,35 @@ function scheduleCountAlerts(pid, start) {
   if (timers.size) countAlertTimers.set(pid, timers);
 }
 
+function withTimeSeconds(value) {
+  if (!value) return '';
+  return value.length === 5 ? value + ':00' : value;
+}
+
+function formatClockTime(date) {
+  return [date.getHours(), date.getMinutes(), date.getSeconds()]
+    .map(part => String(part).padStart(2, '0')).join(':');
+}
+
+function startCountNow(pid) {
+  const p = gp(pid);
+  if (!p) return;
+  const time = formatClockTime(new Date());
+  const input = document.getElementById('hi-'+pid);
+  if (input) input.value = time;
+  document.getElementById('count-notice').hidden = true;
+  saveHoraInicio(pid, time);
+}
+
 function saveHoraInicio(pid, val) {
   const p=gp(pid); if(!p) return;
+  val = withTimeSeconds(val);
   p.horaInicio=val;
   if (p.tipo==='PC') {
     p.countStartAt = val ? resolveCountStart(val, new Date()) : null;
     p.horaFin = '';
     if (val) {
-      const [h,m]=val.split(':').map(Number);
-      const tot=h*60+m+COUNT_DURATION_MINUTES;
-      p.horaFin=String(Math.floor(tot/60)%24).padStart(2,'0')+':'+String(tot%60).padStart(2,'0');
+      p.horaFin = formatClockTime(new Date(p.countStartAt + COUNT_DURATION_MS));
       prepareCountEndAudio();
     }
     const hf=document.getElementById('hf-'+pid); if(hf) hf.value=p.horaFin;
@@ -1093,7 +1117,7 @@ function saveHoraInicio(pid, val) {
   }
   autosave();
 }
-function saveHoraFin(pid, val) { const p=gp(pid); if(p){ p.horaFin=val; autosave(); } }
+function saveHoraFin(pid, val) { const p=gp(pid); if(p){ p.horaFin=withTimeSeconds(val); autosave(); } }
 
 function renderObsTable(pid, showAsist) {
   const p=gp(pid); const wrap=document.getElementById('tw-'+pid);
@@ -1534,14 +1558,16 @@ function obsHeaders(isPC) {
 function obsRows(puntos, isPC) {
   const rows=[]; const cod=state.selectedRuta?.codLocalidad||'';
   puntos.forEach(p=>{
+    const inicio = (p.horaInicio || '').slice(0, 5);
+    const fin = (p.horaFin || '').slice(0, 5);
     if (!p.obs.length) {
-      rows.push(isPC ? [cod,p.codigo,p.horaInicio||'',p.horaFin||'','','','','','','','','','','']
-                     : [cod,p.codigo,p.horaInicio||'',p.horaFin||'','','','','','','','','']);
+      rows.push(isPC ? [cod,p.codigo,inicio,fin,'','','','','','','','','','']
+                     : [cod,p.codigo,inicio,fin,'','','','','','','','']);
     } else {
       p.obs.forEach(ob=>{
         rows.push(isPC
-          ? [cod,p.codigo,p.horaInicio||'',p.horaFin||'',ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.c1_25,ob.c1_50,ob.c2_25,ob.c2_50,ob.asist||'']
-          : [cod,p.codigo,p.horaInicio||'',p.horaFin||'',ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.tr_25,ob.tr_50,ob.asist||'']);
+          ? [cod,p.codigo,inicio,fin,ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.c1_25,ob.c1_50,ob.c2_25,ob.c2_50,ob.asist||'']
+          : [cod,p.codigo,inicio,fin,ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.tr_25,ob.tr_50,ob.asist||'']);
       });
     }
   });
