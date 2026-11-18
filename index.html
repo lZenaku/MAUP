@@ -248,6 +248,10 @@ input::placeholder { color: var(--muted); opacity: .86; }
 .btn-outline:hover { border-color: var(--primary-mid); background: var(--primary-light); }
 .btn-sm { min-height: 40px; padding: 6px 10px; font-size: 13px; }
 .icon-button { min-width: 40px; }
+.count-notice { position: fixed; right: 18px; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 200; width: min(390px, calc(100% - 36px)); padding: 18px 54px 18px 18px; border: 2px solid var(--primary-mid); border-radius: 14px; background: var(--card); color: var(--text); box-shadow: 0 10px 36px #0004; }
+.count-notice strong { display: block; margin-bottom: 5px; font-size: 18px; }
+.count-notice .btn { position: absolute; right: 7px; top: 7px; }
+.count-notice p { font-size: 14px; }
 .nest-location { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .nest-location .btn:disabled { opacity: .68; cursor: wait; }
 .nest-location-status:empty { position: absolute; }
@@ -571,6 +575,14 @@ input::placeholder { color: var(--muted); opacity: .86; }
   </div>
 </div>
 
+<aside id="count-notice" class="count-notice" hidden aria-label="Aviso de conteo">
+  <div role="status" aria-live="polite" aria-atomic="true">
+    <strong id="count-notice-title"></strong>
+    <p id="count-notice-message"></p>
+  </div>
+  <button type="button" class="btn btn-outline icon-button" aria-label="Cerrar aviso de conteo" onclick="document.getElementById('count-notice').hidden=true">×</button>
+</aside>
+
 <script>
 // ══════════ CONSTANTS ══════════
 const RUTAS = [
@@ -815,6 +827,7 @@ function selectRuta(r) {
 }
 
 function buildPuntos(r) {
+  document.getElementById('count-notice').hidden = true;
   countAlertTimers.forEach((_, pid) => clearCountAlerts(pid));
   state.puntos = [];
   if (r.pc) {
@@ -1004,7 +1017,7 @@ function prepareCountEndAudio() {
   if (countEndAudioContext.state !== 'running') {
     countEndAudioContext.resume().catch(console.warn);
   }
-  countEndAudio ||= fetch('alerta_web_puntos_conteo.mp3')
+  countEndAudio ||= fetch('Alerta_5min_fin.m4a')
     .then(response => {
       if (!response.ok) throw new Error('No se pudo cargar el audio de fin de conteo.');
       return response.arrayBuffer();
@@ -1022,6 +1035,17 @@ function clearCountAlerts(pid) {
   countAlertTimers.delete(pid);
 }
 
+function showCountNotice(point, finished) {
+  const notice = document.getElementById('count-notice');
+  document.getElementById('count-notice-title').textContent = finished
+    ? 'Conteo finalizado'
+    : 'Terminaron los primeros 5 minutos';
+  document.getElementById('count-notice-message').textContent = point.codigo + (finished
+    ? ' · Se cumplieron los 10 minutos. Puedes revisar y corregir ambos intervalos.'
+    : ' · Comienza el intervalo de 5–10 minutos.');
+  notice.hidden = false;
+}
+
 function scheduleCountAlerts(pid, start) {
   clearCountAlerts(pid);
   if (start == null) return;
@@ -1033,11 +1057,14 @@ function scheduleCountAlerts(pid, start) {
     if (delay <= 0) continue;
 
     const timer = setTimeout(async () => {
-      const buffer = await countEndAudio;
       if (countAlertTimers.get(pid) !== timers) return;
       timers.delete(timer);
       if (!timers.size) countAlertTimers.delete(pid);
-      if (!buffer) return;
+      const point = gp(pid);
+      if (!point) return;
+      showCountNotice(point, offset === COUNT_DURATION_MS);
+      const buffer = await countEndAudio;
+      if (!buffer || gp(pid) !== point || point.countStartAt !== start) return;
       const sound = countEndAudioContext.createBufferSource();
       sound.buffer = buffer;
       sound.connect(countEndAudioContext.destination);
