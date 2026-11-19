@@ -644,7 +644,7 @@ const ESPECIES = [
 ];
 const IDENTIFICACION  = ['VISUAL','AUDITIVO'];
 const COMPORTAMIENTO  = ['Vuelo','Forrajeando','Interactuando','Perchado','Descanso','Vocalizando','Caminando','Acicalandose','Anidando','Reproductivo','Nidificando','Acarreo'];
-const ALTURA_FORRAJEO = ['Aereo','Suelo','Estructura','-','Dosel','Subdosel','Estrato_medio','Sotobosque'];
+const ALTURA_FORRAJEO = ['Estrato_aereo','Suelo','Estructura','-','Dosel','Subdosel','Estrato_medio','Sotobosque'];
 const STORAGE_KEY     = 'maup_v3';
 
 // ══════════ STATE ══════════
@@ -735,6 +735,7 @@ function loadSave() {
     const speciesRecords = state.puntos.flatMap(p => p.obs || []).concat(state.nidos);
     for (const record of speciesRecords) {
       if (record.especie === 'TRO AED') record.especie = 'TRO MUS';
+      if (record.altForrajeo === 'Aereo') record.altForrajeo = 'Estrato_aereo';
     }
     goStep(s.currentStep||0);
     return true;
@@ -1565,9 +1566,10 @@ function obsRows(puntos, isPC) {
                      : [cod,p.codigo,inicio,fin,'','','','','','','','']);
     } else {
       p.obs.forEach(ob=>{
+        const altura = (ob.altForrajeo === 'Aereo' ? 'Estrato_aereo' : ob.altForrajeo || '').toUpperCase();
         rows.push(isPC
-          ? [cod,p.codigo,inicio,fin,ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.c1_25,ob.c1_50,ob.c2_25,ob.c2_50,ob.asist||'']
-          : [cod,p.codigo,inicio,fin,ob.especie,ob.identificacion,ob.comportamiento,ob.altForrajeo,ob.distObs,ob.tr_25,ob.tr_50,ob.asist||'']);
+          ? [cod,p.codigo,inicio,fin,ob.especie,ob.identificacion,ob.comportamiento,altura,ob.distObs,ob.c1_25,ob.c1_50,ob.c2_25,ob.c2_50,ob.asist||'']
+          : [cod,p.codigo,inicio,fin,ob.especie,ob.identificacion,ob.comportamiento,altura,ob.distObs,ob.tr_25,ob.tr_50,ob.asist||'']);
       });
     }
   });
