@@ -275,6 +275,13 @@ input::placeholder { color: var(--muted); opacity: .86; }
 .obs-table td.col-shaded { background: var(--td-shaded); }
 .obs-table td:first-child { padding-inline: 9px; }
 .obs-table input, .obs-table select { min-height: 40px; padding: 6px 7px; font-size: 13px; }
+.abundance-control { display: flex; align-items: center; gap: 4px; min-width: 98px; }
+.abundance-control input { flex: 1 1 0; min-width: 0; width: 54px !important; }
+.abundance-add { flex: 0 0 40px; min-height: 40px; padding: 0; font-size: 23px; touch-action: manipulation; }
+.abundance-add:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 630px) {
+  .abundance-add { flex-basis: 44px; min-height: 44px; }
+}
 .obs-table .obs-number { color: var(--muted); font-weight: 700; text-align: center; }
 .obs-toggle { display: none; }
 .obs-empty { padding: 17px; border: 1px dashed var(--border); border-radius: 12px; background: var(--card); color: var(--muted); font-size: 14px; }
@@ -1001,6 +1008,9 @@ function refreshCountIntervals(pid) {
       // Mantener editables los valores que ya existían en ambos campos de un borrador.
       near.disabled = !enabled || (near.value === '' && far.value !== '');
       far.disabled = !enabled || (far.value === '' && near.value !== '');
+      for (const input of [near, far]) {
+        input.nextElementSibling.disabled = input.disabled;
+      }
     }
   }
   if (status.textContent !== message) status.textContent = message;
@@ -1238,14 +1248,14 @@ function renderObsRow(pid, idx, showAsist) {
   const cOpts  = COMPORTAMIENTO.map(c=>'<option '+(ob.comportamiento===c?'selected':'')+'>'+c+'</option>').join('');
   const aOpts  = ALTURA_FORRAJEO.map(a=>'<option '+(ob.altForrajeo===a?'selected':'')+'>'+a+'</option>').join('');
   const pcCells = isPC
-    ? '<td class="col-shaded" data-label="0–5 min · &lt;25 m"><input data-count-interval="first" aria-label="0–5 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c1_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c1_25\',this)"></td>'
-      +'<td class="col-shaded" data-label="0–5 min · 25–50 m"><input data-count-interval="first" aria-label="0–5 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c1_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c1_50\',this)"></td>'
-      +'<td class="obs-period-two" data-label="5–10 min · &lt;25 m"><input data-count-interval="second" aria-label="5–10 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c2_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c2_25\',this)"></td>'
-      +'<td class="obs-period-two" data-label="5–10 min · 25–50 m"><input data-count-interval="second" aria-label="5–10 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c2_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c2_50\',this)"></td>'
-    : '<td data-label="Abundancia · &lt;25 m"><input aria-label="Abundancia · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.tr_25||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_25\',this.value)"></td>'
-      +'<td data-label="Abundancia · 25–50 m"><input aria-label="Abundancia · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.tr_50||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'tr_50\',this.value)"></td>';
+    ? '<td class="col-shaded" data-label="0–5 min · &lt;25 m"><input data-abundance-field="c1_25" data-count-interval="first" aria-label="0–5 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c1_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c1_25\',this)"></td>'
+      +'<td class="col-shaded" data-label="0–5 min · 25–50 m"><input data-abundance-field="c1_50" data-count-interval="first" aria-label="0–5 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c1_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c1_50\',this)"></td>'
+      +'<td class="obs-period-two" data-label="5–10 min · &lt;25 m"><input data-abundance-field="c2_25" data-count-interval="second" aria-label="5–10 min · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.c2_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c2_25\',this)"></td>'
+      +'<td class="obs-period-two" data-label="5–10 min · 25–50 m"><input data-abundance-field="c2_50" data-count-interval="second" aria-label="5–10 min · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.c2_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'c2_50\',this)"></td>'
+    : '<td data-label="Abundancia · &lt;25 m"><input data-abundance-field="tr_25" aria-label="Abundancia · &lt;25 m" type="number" min="0" style="width:44px" value="'+(ob.tr_25??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'tr_25\',this)"></td>'
+      +'<td data-label="Abundancia · 25–50 m"><input data-abundance-field="tr_50" aria-label="Abundancia · 25–50 m" type="number" min="0" style="width:44px" value="'+(ob.tr_50??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'tr_50\',this)"></td>';
   const asistCell = showAsist
-    ? '<td data-label="Asistemático"><input aria-label="Asistemático" type="number" min="0" style="width:44px" value="'+(ob.asist||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'asist\',this.value)"></td>' : '';
+    ? '<td data-label="Asistemático"><input data-abundance-field="asist" aria-label="Asistemático" type="number" min="0" style="width:44px" value="'+(ob.asist??'')+'" oninput="saveCountAbundance(\''+pid+'\','+idx+',\'asist\',this)"></td>' : '';
   const tr=document.createElement('tr');
   tr.id = 'obs-row-'+pid+'-'+idx;
   tr.innerHTML='<td class="obs-number"><span class="obs-index">'+(idx+1)+'</span>'
@@ -1257,6 +1267,23 @@ function renderObsRow(pid, idx, showAsist) {
     +'<td data-label="Dist. al observador (m)"><input aria-label="Dist. al observador (m)" type="number" min="0" style="width:54px" value="'+(ob.distObs||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'distObs\',this.value)"></td>'
     +pcCells+asistCell
     +'<td class="obs-delete"><button class="btn btn-danger btn-sm icon-button" aria-label="Eliminar avistamiento" onclick="removeObs(\''+pid+'\','+idx+')">✕</button></td>';
+  for (const input of tr.querySelectorAll('[data-abundance-field]')) {
+    const control = document.createElement('div');
+    control.className = 'abundance-control';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-outline abundance-add';
+    button.textContent = '+';
+    button.setAttribute('aria-label', 'Sumar un individuo en '+input.getAttribute('aria-label')+', avistamiento '+(idx+1));
+    button.addEventListener('click', () => {
+      if (isPC) refreshCountIntervals(pid);
+      if (input.disabled) return;
+      input.stepUp();
+      input.dispatchEvent(new Event('input', {bubbles: true}));
+    });
+    input.before(control);
+    control.append(input, button);
+  }
   const toggle = tr.querySelector('.obs-toggle');
   const fieldIds = Array.from(tr.cells).slice(1, -1).map((cell, i) => {
     cell.id = 'obs-field-'+pid+'-'+idx+'-'+i;
