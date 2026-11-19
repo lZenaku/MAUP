@@ -1247,12 +1247,13 @@ function renderObsRow(pid, idx, showAsist) {
   const asistCell = showAsist
     ? '<td data-label="Asistemático"><input aria-label="Asistemático" type="number" min="0" style="width:44px" value="'+(ob.asist||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'asist\',this.value)"></td>' : '';
   const tr=document.createElement('tr');
+  tr.id = 'obs-row-'+pid+'-'+idx;
   tr.innerHTML='<td class="obs-number"><span class="obs-index">'+(idx+1)+'</span>'
     +'<button type="button" class="obs-toggle"></button></td>'
     +'<td class="species-cell" data-label="Especie"></td>'
-    +'<td data-label="Identificación"><select aria-label="Identificación" style="width:104px" onchange="setOb(\''+pid+'\','+idx+',\'identificacion\',this.value)">'+idOpts+'</select></td>'
-    +'<td data-label="Comportamiento"><select aria-label="Comportamiento" style="width:144px" onchange="setOb(\''+pid+'\','+idx+',\'comportamiento\',this.value)"><option value="">—</option>'+cOpts+'</select></td>'
-    +'<td data-label="Altura de forrajeo"><select aria-label="Altura de forrajeo" style="width:128px" onchange="setOb(\''+pid+'\','+idx+',\'altForrajeo\',this.value)"><option value="">—</option>'+aOpts+'</select></td>'
+    +'<td data-label="Identificación"><select data-observation-field="identificacion" aria-label="Identificación" style="width:104px" onchange="setOb(\''+pid+'\','+idx+',\'identificacion\',this.value)">'+idOpts+'</select></td>'
+    +'<td data-label="Comportamiento"><select data-observation-field="comportamiento" aria-label="Comportamiento" style="width:144px" onchange="setOb(\''+pid+'\','+idx+',\'comportamiento\',this.value)"><option value="">—</option>'+cOpts+'</select></td>'
+    +'<td data-label="Altura de forrajeo"><select data-observation-field="altForrajeo" aria-label="Altura de forrajeo" style="width:128px" onchange="setOb(\''+pid+'\','+idx+',\'altForrajeo\',this.value)"><option value="">—</option>'+aOpts+'</select></td>'
     +'<td data-label="Dist. al observador (m)"><input aria-label="Dist. al observador (m)" type="number" min="0" style="width:54px" value="'+(ob.distObs||'')+'" onchange="setOb(\''+pid+'\','+idx+',\'distObs\',this.value)"></td>'
     +pcCells+asistCell
     +'<td class="obs-delete"><button class="btn btn-danger btn-sm icon-button" aria-label="Eliminar avistamiento" onclick="removeObs(\''+pid+'\','+idx+')">✕</button></td>';
@@ -1300,7 +1301,22 @@ function saveCountAbundance(pid, idx, key, input) {
   refreshCountIntervals(pid);
 }
 
-function setOb(pid, idx, key, val) { const p=gp(pid); if(p&&p.obs[idx]){ p.obs[idx][key]=val; autosave(); } }
+function setOb(pid, idx, key, val) {
+  const ob = gp(pid)?.obs[idx];
+  if (!ob) return;
+  ob[key] = val;
+  if (key === 'identificacion' && val === 'AUDITIVO') {
+    ob.comportamiento = 'Vocalizando';
+  }
+  if (key === 'comportamiento' && val === 'Vuelo') {
+    ob.altForrajeo = 'Estrato_aereo';
+  }
+  const row = document.getElementById('obs-row-'+pid+'-'+idx);
+  for (const field of row?.querySelectorAll('[data-observation-field]') || []) {
+    field.value = ob[field.dataset.observationField] || '';
+  }
+  autosave();
+}
 function removeObs(pid, idx) {
   const p=gp(pid); p.obs.splice(idx,1);
   renderObsTable(pid, document.getElementById('asist-'+pid)?.checked||false);
