@@ -934,7 +934,7 @@ function gp(pid) { return state.puntos.find(p=>p.id===pid); }
 const COUNT_DURATION_MINUTES = 10;
 const COUNT_DURATION_MS = COUNT_DURATION_MINUTES * 60_000;
 const COUNT_MIDPOINT_MS = COUNT_DURATION_MS / 2;
-const COUNT_FIRST_GRACE_MS = 30_000;
+const COUNT_FIRST_GRACE_MS = 50_000;
 let countIntervalTimer;
 
 function resolveCountStart(startTime, now) {
@@ -982,7 +982,7 @@ function refreshCountIntervals(pid) {
       nextChange = midpoint;
     } else if (current < firstClose) {
       firstEnabled = secondEnabled = true;
-      message = 'Ambos intervalos habilitados. El primero cierra 30 segundos después del minuto 5.';
+      message = 'Ambos intervalos habilitados. El primero cierra 50 segundos después del minuto 5.';
       nextChange = firstClose;
     } else if (current < end) {
       secondEnabled = true;
