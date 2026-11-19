@@ -1188,7 +1188,8 @@ function createSpeciesPicker(id, selectedCode, onSelect, emptyLabel) {
     const query = input.value.trim().toLowerCase().replace(/\s+/g, ' ');
     results.replaceChildren();
     for (const [code, name] of ESPECIES) {
-      if (name.toLowerCase().includes(query)) addResult(code, name);
+      const scientificName = name.toLowerCase();
+      if (scientificName.startsWith(query) || scientificName.includes(' ' + query)) addResult(code, name);
     }
     if (!results.childElementCount) {
       const message = document.createElement('p');
