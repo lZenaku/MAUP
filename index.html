@@ -524,6 +524,25 @@ input::placeholder { color: var(--muted); opacity: .86; }
     background: linear-gradient(90deg, #164735 0%, #164735e6 42%, #16473570 65%, #16473533 100%);
   }
 }
+#step-2 .section-header::before {
+  inset: 0 0 0 30%;
+  transform: none;
+  mask-image: none;
+  background: url('ruta-paisaje.webp') center 38% / cover no-repeat;
+}
+#step-2 .section-header::after {
+  background: linear-gradient(90deg, #164735 0%, #164735 24%, #164735e6 38%, #16473559 61%, #16473508 100%);
+}
+@media (max-width: 630px) {
+  #step-2 .section-header::before {
+    inset-inline-start: 38%;
+    background-size: auto 220px;
+    background-position: 48% 38%;
+  }
+  #step-2 .section-header::after {
+    background: linear-gradient(90deg, #164735 0%, #164735e6 42%, #16473570 65%, #16473533 100%);
+  }
+}
 </style>
 </head>
 <body>
